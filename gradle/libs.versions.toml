@@ -48,10 +48,12 @@ junitUi = "1.1.4"
 espresso = "3.5.0"
 mockito = "5.14.2"
 mockitoKotlin = "5.4.0"
+sqliteJdbc = "3.50.3.0"
 coroutinesTest = "1.7.1"
 rules = "1.5.0"
 
 [libraries]
+test-sqliteJdbc = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqliteJdbc" }
 kotlin = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
 coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 javax = { group = "javax.inject", name = "javax.inject", version.ref = "javax" }

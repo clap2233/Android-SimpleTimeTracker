@@ -86,6 +86,9 @@ class RecordInteractor @Inject constructor(
             timeEnded = timeEnded,
             comment = runningRecord.comment,
             tags = runningRecord.tags,
+            summary = runningRecord.summary,
+            zoneId = runningRecord.zoneId,
+            templateId = runningRecord.templateId,
         ).let {
             add(it)
         }

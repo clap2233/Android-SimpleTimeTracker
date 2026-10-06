@@ -12,13 +12,12 @@ import androidx.test.espresso.matcher.ViewMatchers.isDescendantOfA
 import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.example.util.simpletimetracker.core.mapper.ColorMapper
 import com.example.util.simpletimetracker.utils.BaseUiTest
 import com.example.util.simpletimetracker.utils.checkViewDoesNotExist
 import com.example.util.simpletimetracker.utils.checkViewIsDisplayed
 import com.example.util.simpletimetracker.utils.clickOnViewWithText
 import com.example.util.simpletimetracker.utils.tryAction
-import com.example.util.simpletimetracker.utils.withCardColor
+import com.example.util.simpletimetracker.utils.withCardColorInt
 import dagger.hilt.android.testing.HiltAndroidTest
 import org.hamcrest.CoreMatchers.allOf
 import org.hamcrest.Matcher
@@ -33,12 +32,12 @@ class AddDefaultRecordTypeTest : BaseUiTest() {
 
     @Test
     fun default() {
-        val name1 = "Games"
-        val name1next = "Tv"
-        val color1 = ColorMapper.getAvailableColors()[1]
-        val name2 = "Chores"
-        val name2next = "Cleaning"
-        val color2 = ColorMapper.getAvailableColors()[5]
+        val name1 = "日常必需"
+        val name1next = "照顾自己"
+        val color1 = 0xFFD9DDE2.toInt()
+        val name2 = "用脑／事务"
+        val name2next = "娱乐"
+        val color2 = 0xFF44658D.toInt()
 
         tryAction {
             checkViewIsDisplayed(
@@ -132,7 +131,7 @@ class AddDefaultRecordTypeTest : BaseUiTest() {
         checkViewIsDisplayed(
             allOf(
                 withId(baseR.id.viewRecordTypeItem),
-                hasDescendant(withCardColor(color)),
+                hasDescendant(withCardColorInt(color)),
                 hasDescendant(withText(name)),
             ),
         )

@@ -11,6 +11,7 @@ import com.example.util.simpletimetracker.domain.prefs.interactor.PrefsInteracto
 import com.example.util.simpletimetracker.domain.record.model.Record
 import com.example.util.simpletimetracker.domain.record.model.RecordBase
 import com.example.util.simpletimetracker.domain.record.model.RecordDataSelectionDialogResult
+import com.example.util.simpletimetracker.domain.record.model.RecordReviewState
 import com.example.util.simpletimetracker.domain.record.model.RunningRecord
 import com.example.util.simpletimetracker.domain.recordType.interactor.RecordTypeInteractor
 import com.example.util.simpletimetracker.domain.recordType.model.RecordType
@@ -144,6 +145,7 @@ class AddRunningRecordMediator @Inject constructor(
         timeStarted: Long,
         comment: String,
         tags: List<RecordBase.Tag>,
+        sourceRecord: RunningRecord? = null,
     ) {
         addInternal(
             params = StartParams(
@@ -153,6 +155,7 @@ class AddRunningRecordMediator @Inject constructor(
                 tags = tags,
                 updateNotificationSwitch = true,
                 isMultitaskingAllowed = true,
+                sourceRecord = sourceRecord,
             ),
             checkDefaultDuration = false,
         )
@@ -199,7 +202,13 @@ class AddRunningRecordMediator @Inject constructor(
         params: StartParams,
     ) {
         if (runningRecordInteractor.get(params.typeId) == null && params.typeId > 0L) {
-            val data = RunningRecord(
+            val source = params.sourceRecord ?: RunningRecord(
+                id = params.typeId,
+                timeStarted = params.timeStarted,
+                comment = "",
+                tags = emptyList(),
+            )
+            val data = source.copy(
                 id = params.typeId,
                 timeStarted = params.timeStarted,
                 comment = params.comment,
@@ -241,8 +250,7 @@ class AddRunningRecordMediator @Inject constructor(
         val shouldMerge = prevRecord?.tags.orEmpty().sortedBy { it.tagId } == params.tags.sortedBy { it.tagId }
 
         val record = if (prevRecord != null && shouldMerge) {
-            Record(
-                id = prevRecord.id, // Updates existing record.
+            prevRecord.copy(
                 typeId = params.typeId,
                 timeStarted = prevRecord.timeStarted,
                 timeEnded = params.timeStarted,
@@ -250,6 +258,7 @@ class AddRunningRecordMediator @Inject constructor(
                     ?: prevRecord.comment,
                 tags = params.tags.takeUnless { it.isEmpty() }
                     ?: prevRecord.tags,
+                reviewState = RecordReviewState.PENDING,
             )
         } else {
             val newTimeStarted = prevRecords().firstOrNull()?.timeEnded
@@ -337,6 +346,7 @@ class AddRunningRecordMediator @Inject constructor(
         val tags: List<RecordBase.Tag>,
         val updateNotificationSwitch: Boolean,
         val isMultitaskingAllowed: Boolean,
+        val sourceRecord: RunningRecord? = null,
     )
 
     sealed interface StartTime {

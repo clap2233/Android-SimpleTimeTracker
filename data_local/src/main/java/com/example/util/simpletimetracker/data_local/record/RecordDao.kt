@@ -1,10 +1,9 @@
 package com.example.util.simpletimetracker.data_local.record
 
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Upsert
 
 @Dao
 interface RecordDao {
@@ -116,8 +115,14 @@ interface RecordDao {
     @Query("SELECT * FROM records WHERE time_ended = :timeEnded")
     suspend fun getByTimeEnded(timeEnded: Long): List<RecordWithRecordTagsDBO>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(record: RecordDBO): Long
+    @Upsert
+    suspend fun upsert(record: RecordDBO): Long
+
+    @Transaction
+    suspend fun insert(record: RecordDBO): Long {
+        val insertedId = upsert(record)
+        return if (insertedId == -1L) record.id else insertedId
+    }
 
     @Query("UPDATE records SET type_id = :typeId, comment = :comment WHERE id = :recordId")
     suspend fun update(
@@ -126,7 +131,7 @@ interface RecordDao {
         comment: String,
     )
 
-    @Query("UPDATE records SET time_ended = :timeEnded WHERE id = :recordId")
+    @Query("UPDATE records SET time_ended = :timeEnded, review_state = 0 WHERE id = :recordId")
     suspend fun updateTimeEnded(recordId: Long, timeEnded: Long)
 
     @Query("DELETE FROM records WHERE id = :id")

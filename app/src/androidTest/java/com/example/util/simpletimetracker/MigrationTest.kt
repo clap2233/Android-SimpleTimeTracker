@@ -9,6 +9,7 @@ import com.example.util.simpletimetracker.data_local.database.AppDatabase
 import com.example.util.simpletimetracker.data_local.database.AppDatabaseMigrations
 import java.io.IOException
 import org.junit.Rule
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -22,6 +23,32 @@ class MigrationTest {
         AppDatabase::class.java.canonicalName,
         FrameworkSQLiteOpenHelperFactory(),
     )
+
+    @Test
+    fun migrateLifeClockDataPreservesLegacyTimeAndScores() {
+        helper.createDatabase(testDatabaseName, 34).use { database ->
+            database.execSQL("INSERT INTO records (id, type_id, time_started, time_ended, comment, tag_id) VALUES (1, 0, 1700000000123, 1700000900123, 'legacy', 0)")
+            database.execSQL("INSERT INTO recordToRecordTag (record_id, record_tag_id, record_tag_numeric_value) VALUES (1, 5, 4.0), (1, 6, NULL)")
+        }
+        helper.runMigrationsAndValidate(testDatabaseName, 35, true, *AppDatabaseMigrations.migrations.toTypedArray()).use { database ->
+            database.query("SELECT time_started, time_ended, comment, review_state, zone_id FROM records WHERE id = 1").use { cursor ->
+                assertEquals(true, cursor.moveToFirst())
+                assertEquals(1_700_000_000_123, cursor.getLong(0))
+                assertEquals(1_700_000_900_123, cursor.getLong(1))
+                assertEquals("legacy", cursor.getString(2))
+                assertEquals(1, cursor.getInt(3))
+                assertEquals(true, cursor.isNull(4))
+            }
+            database.query("SELECT record_tag_numeric_value, rated_at FROM recordToRecordTag ORDER BY record_tag_id").use { cursor ->
+                assertEquals(true, cursor.moveToFirst())
+                assertEquals(4.0, cursor.getDouble(0), 0.0)
+                assertEquals(true, cursor.isNull(1))
+                assertEquals(true, cursor.moveToNext())
+                assertEquals(true, cursor.isNull(0))
+                assertEquals(true, cursor.isNull(1))
+            }
+        }
+    }
 
     @Test
     @Throws(IOException::class)

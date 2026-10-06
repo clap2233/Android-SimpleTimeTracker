@@ -11,6 +11,7 @@ class RunningRecordToRecordTagDataLocalMapper @Inject constructor() {
             runningRecordId = dbo.runningRecordId,
             recordTagId = dbo.recordTagId,
             recordTagNumericValue = dbo.recordTagNumericValue,
+            ratedAt = dbo.ratedAt,
         )
     }
 
@@ -19,6 +20,7 @@ class RunningRecordToRecordTagDataLocalMapper @Inject constructor() {
             runningRecordId = recordId,
             recordTagId = recordTag.tagId,
             recordTagNumericValue = recordTag.numericValue,
+            ratedAt = recordTag.ratedAt,
         )
     }
 
@@ -27,6 +29,7 @@ class RunningRecordToRecordTagDataLocalMapper @Inject constructor() {
             runningRecordId = domain.runningRecordId,
             recordTagId = domain.recordTagId,
             recordTagNumericValue = domain.recordTagNumericValue,
+            ratedAt = domain.ratedAt,
         )
     }
 }

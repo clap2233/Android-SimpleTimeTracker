@@ -44,6 +44,9 @@ class RangeMapper @Inject constructor() {
             timeEnded = record.timeEnded,
             comment = record.comment,
             tags = record.tags,
+            summary = record.summary,
+            zoneId = record.zoneId,
+            templateId = record.templateId,
         )
     }
 

@@ -22,6 +22,7 @@ import com.example.util.simpletimetracker.domain.recordTag.interactor.RecordType
 import com.example.util.simpletimetracker.domain.recordTag.interactor.RecordTypeToTagInteractor
 import com.example.util.simpletimetracker.domain.recordTag.interactor.RemoveRecordTagMediator
 import com.example.util.simpletimetracker.domain.recordTag.model.RecordTag
+import com.example.util.simpletimetracker.domain.recordTag.model.RecordTagPurpose
 import com.example.util.simpletimetracker.domain.recordTag.model.RecordTagValueType
 import com.example.util.simpletimetracker.domain.recordType.interactor.RecordTypeInteractor
 import com.example.util.simpletimetracker.domain.recordType.model.RecordTypeGoal
@@ -340,6 +341,7 @@ class ChangeRecordTagViewModel @Inject constructor(
         (saveButtonEnabled as MutableLiveData).value = false
         viewModelScope.launch {
             // Zero id creates new record
+            val original = recordTagInteractor.get(recordTagId)
             RecordTag(
                 id = recordTagId,
                 name = newName.trimIfNotBlank(),
@@ -349,6 +351,7 @@ class ChangeRecordTagViewModel @Inject constructor(
                 note = newNote,
                 valueType = newValueType,
                 valueSuffix = newValueSuffix,
+                purpose = original?.purpose ?: RecordTagPurpose.GENERAL,
             ).let {
                 val addedId = recordTagInteractor.add(it)
                 saveTypes(addedId)

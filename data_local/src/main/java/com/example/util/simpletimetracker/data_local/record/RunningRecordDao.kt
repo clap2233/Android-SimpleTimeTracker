@@ -1,10 +1,9 @@
 package com.example.util.simpletimetracker.data_local.record
 
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Upsert
 
 @Dao
 interface RunningRecordDao {
@@ -21,8 +20,14 @@ interface RunningRecordDao {
     @Query("SELECT * FROM runningRecords WHERE id = :id LIMIT 1")
     suspend fun get(id: Long): RunningRecordWithRecordTagsDBO?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(record: RunningRecordDBO): Long
+    @Upsert
+    suspend fun upsert(record: RunningRecordDBO): Long
+
+    @Transaction
+    suspend fun insert(record: RunningRecordDBO): Long {
+        val insertedId = upsert(record)
+        return if (insertedId == -1L) record.id else insertedId
+    }
 
     @Query("DELETE FROM runningRecords WHERE id = :id")
     suspend fun delete(id: Long)

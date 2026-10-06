@@ -12,5 +12,6 @@ sealed interface RecordBase {
     data class Tag(
         val tagId: Long,
         val numericValue: Double?,
+        val ratedAt: Long? = null,
     )
 }

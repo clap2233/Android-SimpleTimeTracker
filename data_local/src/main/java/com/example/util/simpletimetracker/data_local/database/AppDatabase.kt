@@ -26,6 +26,8 @@ import com.example.util.simpletimetracker.data_local.record.RecordDBO
 import com.example.util.simpletimetracker.data_local.record.RecordDao
 import com.example.util.simpletimetracker.data_local.record.RunningRecordDBO
 import com.example.util.simpletimetracker.data_local.record.RunningRecordDao
+import com.example.util.simpletimetracker.data_local.recordPhoto.RecordPhotoDBO
+import com.example.util.simpletimetracker.data_local.recordPhoto.RecordPhotoDao
 import com.example.util.simpletimetracker.data_local.recordShortcut.RecordShortcutDBO
 import com.example.util.simpletimetracker.data_local.recordShortcut.RecordShortcutDao
 import com.example.util.simpletimetracker.data_local.recordTag.RecordShortcutToRecordTagDBO
@@ -52,6 +54,7 @@ import com.example.util.simpletimetracker.data_local.recordsFilter.FavouriteReco
         RecordDBO::class,
         RecordTypeDBO::class,
         RunningRecordDBO::class,
+        RecordPhotoDBO::class,
         CategoryDBO::class,
         RecordTypeCategoryDBO::class,
         RecordTagDBO::class,
@@ -73,7 +76,7 @@ import com.example.util.simpletimetracker.data_local.recordsFilter.FavouriteReco
         FavouriteRecordsFilterDBO.MainDBO::class,
         FavouriteRecordsFilterDBO.FilterDBO::class,
     ],
-    version = 34,
+    version = 35,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -83,6 +86,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun recordTypeDao(): RecordTypeDao
 
     abstract fun runningRecordDao(): RunningRecordDao
+
+    abstract fun recordPhotoDao(): RecordPhotoDao
 
     abstract fun categoryDao(): CategoryDao
 

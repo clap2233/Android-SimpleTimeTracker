@@ -1,6 +1,8 @@
 package com.example.util.simpletimetracker.feature_notification.activity.interactor
 
 import com.example.util.simpletimetracker.core.repo.ResourceRepo
+import com.example.util.simpletimetracker.domain.base.CurrentTimestampProvider
+import com.example.util.simpletimetracker.domain.notifications.interactor.GetNextActivityReminderInteractor
 import com.example.util.simpletimetracker.domain.notifications.interactor.NotificationActivityInteractor
 import com.example.util.simpletimetracker.domain.prefs.interactor.PrefsInteractor
 import com.example.util.simpletimetracker.domain.recordType.interactor.RecordTypeInteractor
@@ -20,21 +22,39 @@ class NotificationActivityInteractorImpl @Inject constructor(
     private val recordTypeInteractor: RecordTypeInteractor,
     private val runningRecordInteractor: RunningRecordInteractor,
     private val getDoNotDisturbHandledScheduleInteractor: GetDoNotDisturbHandledScheduleInteractor,
+    private val getNextActivityReminderInteractor: GetNextActivityReminderInteractor,
+    private val currentTimestampProvider: CurrentTimestampProvider,
 ) : NotificationActivityInteractor {
 
     override suspend fun checkAndSchedule() {
-        prefsInteractor.getActivityReminderDuration()
-            .takeIf { it > 0 }
-            ?.takeIf { runningRecordInteractor.getAll().isNotEmpty() }
-            ?.let { it * 1000L + System.currentTimeMillis() }
-            ?.let {
-                getDoNotDisturbHandledScheduleInteractor.execute(
-                    timestamp = it,
-                    dndStart = prefsInteractor.getActivityReminderDoNotDisturbStart(),
-                    dndEnd = prefsInteractor.getActivityReminderDoNotDisturbEnd(),
-                )
-            }
-            ?.let(scheduler::schedule)
+        val durationSeconds = prefsInteractor.getActivityReminderDuration()
+        val runningRecords = runningRecordInteractor.getAll()
+        if (durationSeconds <= 0 || durationSeconds > Long.MAX_VALUE / 1000L || runningRecords.isEmpty()) {
+            cancel()
+            return
+        }
+        val now = currentTimestampProvider.get()
+        val dndStart = prefsInteractor.getActivityReminderDoNotDisturbStart()
+        val dndEnd = prefsInteractor.getActivityReminderDoNotDisturbEnd()
+        val timestamp = runningRecords.mapNotNull { record ->
+            val next = getNextActivityReminderInteractor.execute(
+                timeStarted = record.timeStarted,
+                now = now,
+                intervalMillis = durationSeconds * 1000L,
+            ) ?: return@mapNotNull null
+            val allowed = getDoNotDisturbHandledScheduleInteractor.execute(next, dndStart, dndEnd)
+            // Preserve the start-relative phase when quiet hours postpone the alarm.
+            getNextActivityReminderInteractor.execute(
+                timeStarted = record.timeStarted,
+                now = allowed - 1,
+                intervalMillis = durationSeconds * 1000L,
+            )
+        }.minOrNull()
+        if (timestamp == null) {
+            cancel()
+            return
+        }
+        scheduler.schedule(timestamp)
     }
 
     override fun cancel() {
@@ -44,7 +64,12 @@ class NotificationActivityInteractorImpl @Inject constructor(
 
     override suspend fun show() {
         val recordTypes = recordTypeInteractor.getAll().associateBy { it.id }
-        val recordNames = runningRecordInteractor.getAll()
+        val runningRecords = runningRecordInteractor.getAll()
+        if (runningRecords.isEmpty() || prefsInteractor.getActivityReminderDuration() <= 0) {
+            cancel()
+            return
+        }
+        val recordNames = runningRecords
             .mapNotNull { recordTypes[it.id] }
             .joinToString(separator = ", ") { it.name }
 

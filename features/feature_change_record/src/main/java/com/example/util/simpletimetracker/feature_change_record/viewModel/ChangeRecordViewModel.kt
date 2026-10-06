@@ -24,6 +24,7 @@ import com.example.util.simpletimetracker.domain.record.interactor.RecordInterac
 import com.example.util.simpletimetracker.domain.statistics.model.RangeLength
 import com.example.util.simpletimetracker.domain.record.model.Record
 import com.example.util.simpletimetracker.domain.record.model.RecordBase
+import com.example.util.simpletimetracker.domain.record.model.RecordReviewState
 import com.example.util.simpletimetracker.domain.recordTag.interactor.AddTagToTypeIfNotExistMediator
 import com.example.util.simpletimetracker.domain.recordTag.interactor.NeedTagValueSelectionInteractor
 import com.example.util.simpletimetracker.domain.recordTag.interactor.RecordTagInteractor
@@ -143,13 +144,27 @@ class ChangeRecordViewModel @Inject constructor(
     ) {
         // Zero id creates new record
         val id = recordId.orZero()
-        Record(
+        val original = recordInteractor.get(id)
+        val reviewState = if (original?.timeStarted == newTimeStarted && original.timeEnded == newTimeEnded) {
+            original.reviewState
+        } else {
+            RecordReviewState.PENDING
+        }
+        val initial = original ?: Record(
+            typeId = newTypeId,
+            timeStarted = newTimeStarted,
+            timeEnded = newTimeEnded,
+            comment = "",
+            tags = emptyList(),
+        )
+        initial.copy(
             id = id,
             typeId = newTypeId,
             timeStarted = newTimeStarted,
             timeEnded = newTimeEnded,
             comment = commentSelectionViewModelDelegate.newComment,
             tags = newTags,
+            reviewState = reviewState,
         ).let {
             addRecordMediator.add(it)
         }

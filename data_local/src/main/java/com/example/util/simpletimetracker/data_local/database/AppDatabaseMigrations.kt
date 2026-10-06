@@ -42,7 +42,43 @@ class AppDatabaseMigrations {
                 migration_31_32,
                 migration_32_33,
                 migration_33_34,
+                migration_34_35,
             )
+
+        private val migration_34_35 = object : Migration(34, 35) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE records ADD COLUMN review_state INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE records ADD COLUMN summary TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE records ADD COLUMN zone_id TEXT")
+                database.execSQL("ALTER TABLE records ADD COLUMN template_id INTEGER")
+                database.execSQL("ALTER TABLE runningRecords ADD COLUMN summary TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE runningRecords ADD COLUMN zone_id TEXT")
+                database.execSQL("ALTER TABLE runningRecords ADD COLUMN template_id INTEGER")
+                database.execSQL("ALTER TABLE recordTags ADD COLUMN purpose INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE recordToRecordTag ADD COLUMN rated_at INTEGER")
+                database.execSQL("ALTER TABLE runningRecordToRecordTag ADD COLUMN rated_at INTEGER")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_records_time_started ON records(time_started)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_records_time_ended ON records(time_ended)")
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS recordPhotos (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, record_id INTEGER, running_record_id INTEGER, " +
+                        "relative_path TEXT NOT NULL, sha256 TEXT NOT NULL, position INTEGER NOT NULL, " +
+                        "FOREIGN KEY(record_id) REFERENCES records(id) ON UPDATE NO ACTION ON DELETE CASCADE, " +
+                        "FOREIGN KEY(running_record_id) REFERENCES runningRecords(id) ON UPDATE NO ACTION ON DELETE CASCADE)",
+                )
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_recordPhotos_record_id ON recordPhotos(record_id)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_recordPhotos_running_record_id ON recordPhotos(running_record_id)")
+                // Keep timestamps and legacy scores intact; only classify unambiguous past intervals.
+                database.execSQL(
+                    "UPDATE records SET review_state = 1 " +
+                        "WHERE time_ended > time_started AND (time_ended - time_started) % 900000 = 0 AND time_ended <= ? " +
+                        "AND NOT EXISTS (SELECT 1 FROM records AS other WHERE other.id != records.id " +
+                        "AND other.time_started < records.time_ended AND other.time_ended > records.time_started) " +
+                        "AND NOT EXISTS (SELECT 1 FROM runningRecords WHERE runningRecords.time_started < records.time_ended)",
+                    arrayOf(System.currentTimeMillis()),
+                )
+            }
+        }
 
         private val migration_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {

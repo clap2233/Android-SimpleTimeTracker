@@ -41,4 +41,7 @@ data class RecordTagDBO(
 
     @ColumnInfo(name = "value_suffix")
     val valueSuffix: String?,
+
+    @ColumnInfo(name = "purpose", defaultValue = "0")
+    val purpose: Int = 0,
 )

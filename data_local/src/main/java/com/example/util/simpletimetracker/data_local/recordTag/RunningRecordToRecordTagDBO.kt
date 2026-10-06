@@ -13,4 +13,7 @@ data class RunningRecordToRecordTagDBO(
 
     @ColumnInfo(name = "record_tag_numeric_value")
     val recordTagNumericValue: Double?,
+
+    @ColumnInfo(name = "rated_at")
+    val ratedAt: Long? = null,
 )

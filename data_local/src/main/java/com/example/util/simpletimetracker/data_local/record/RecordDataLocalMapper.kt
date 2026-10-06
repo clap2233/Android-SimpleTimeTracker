@@ -1,9 +1,9 @@
 package com.example.util.simpletimetracker.data_local.record
 
 import com.example.util.simpletimetracker.data_local.recordTag.RecordToRecordTagDBO
-import com.example.util.simpletimetracker.domain.extension.dropMillis
 import com.example.util.simpletimetracker.domain.record.model.Record
 import com.example.util.simpletimetracker.domain.record.model.RecordBase
+import com.example.util.simpletimetracker.domain.record.model.RecordReviewState
 import javax.inject.Inject
 
 class RecordDataLocalMapper @Inject constructor() {
@@ -16,6 +16,10 @@ class RecordDataLocalMapper @Inject constructor() {
             timeEnded = dbo.record.timeEnded,
             comment = dbo.record.comment,
             tags = dbo.recordTags.map(::map),
+            summary = dbo.record.summary,
+            zoneId = dbo.record.zoneId,
+            templateId = dbo.record.templateId,
+            reviewState = RecordReviewState.fromStorageValue(dbo.record.reviewState),
         )
     }
 
@@ -23,10 +27,14 @@ class RecordDataLocalMapper @Inject constructor() {
         return RecordDBO(
             id = domain.id,
             typeId = domain.typeId,
-            timeStarted = domain.timeStarted.dropMillis(),
-            timeEnded = domain.timeEnded.dropMillis(),
+            timeStarted = domain.timeStarted,
+            timeEnded = domain.timeEnded,
             comment = domain.comment,
             tagId = 0,
+            summary = domain.summary,
+            zoneId = domain.zoneId,
+            templateId = domain.templateId,
+            reviewState = domain.reviewState.storageValue,
         )
     }
 
@@ -34,6 +42,7 @@ class RecordDataLocalMapper @Inject constructor() {
         return RecordBase.Tag(
             tagId = dbo.recordTagId,
             numericValue = dbo.recordTagNumericValue,
+            ratedAt = dbo.ratedAt,
         )
     }
 }

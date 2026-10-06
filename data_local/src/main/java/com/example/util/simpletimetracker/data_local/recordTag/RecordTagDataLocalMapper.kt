@@ -3,6 +3,7 @@ package com.example.util.simpletimetracker.data_local.recordTag
 import com.example.util.simpletimetracker.domain.color.model.AppColor
 import com.example.util.simpletimetracker.domain.recordTag.model.RecordTag
 import com.example.util.simpletimetracker.domain.recordTag.model.RecordTagValueType
+import com.example.util.simpletimetracker.domain.recordTag.model.RecordTagPurpose
 import javax.inject.Inject
 
 class RecordTagDataLocalMapper @Inject constructor() {
@@ -25,6 +26,7 @@ class RecordTagDataLocalMapper @Inject constructor() {
                 else -> RecordTagValueType.NONE
             },
             valueSuffix = dbo.valueSuffix.orEmpty(),
+            purpose = RecordTagPurpose.fromStorageValue(dbo.purpose),
         )
     }
 
@@ -45,6 +47,7 @@ class RecordTagDataLocalMapper @Inject constructor() {
                 RecordTagValueType.NUMERIC -> 1
             },
             valueSuffix = domain.valueSuffix.takeIf(String::isNotEmpty),
+            purpose = domain.purpose.storageValue,
         )
     }
 }

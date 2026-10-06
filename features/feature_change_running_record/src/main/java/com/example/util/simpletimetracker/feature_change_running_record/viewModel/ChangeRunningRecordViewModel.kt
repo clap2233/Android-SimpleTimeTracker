@@ -142,6 +142,7 @@ class ChangeRunningRecordViewModel @Inject constructor(
         doAfter: suspend () -> Unit,
     ) {
         // Widgets will update on adding.
+        val original = runningRecordInteractor.get(extra.id)
         removeRunningRecordMediator.remove(
             typeId = extra.id,
             updateWidgets = false,
@@ -153,6 +154,7 @@ class ChangeRunningRecordViewModel @Inject constructor(
             timeStarted = newTimeStarted,
             comment = commentSelectionViewModelDelegate.newComment,
             tags = newTags,
+            sourceRecord = original,
         )
         addTagToTypeIfNotExistMediator.execute(
             typeId = newTypeId,

@@ -256,7 +256,7 @@ class PrefsRepoImpl @Inject constructor(
     )
 
     override var allowMultitasking: Boolean by prefs.delegate(
-        KEY_ALLOW_MULTITASKING, true,
+        KEY_ALLOW_MULTITASKING, false,
     )
 
     override var showNotifications: Boolean by prefs.delegate(
@@ -288,11 +288,11 @@ class PrefsRepoImpl @Inject constructor(
     )
 
     override var activityReminderDuration: Long by prefs.delegate(
-        KEY_ACTIVITY_REMINDER_DURATION, 0, // 0 is for disabled
+        KEY_ACTIVITY_REMINDER_DURATION, 15 * 60L, // 0 is for disabled
     )
 
     override var activityReminderRecurrent: Boolean by prefs.delegate(
-        KEY_ACTIVITY_REMINDER_RECURRENT, false,
+        KEY_ACTIVITY_REMINDER_RECURRENT, true,
     )
 
     override var activityReminderDoNotDisturbStart: Long by prefs.delegate(

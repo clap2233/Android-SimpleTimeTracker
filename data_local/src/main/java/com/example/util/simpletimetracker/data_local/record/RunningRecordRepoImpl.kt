@@ -2,7 +2,6 @@ package com.example.util.simpletimetracker.data_local.record
 
 import com.example.util.simpletimetracker.data_local.base.logDataAccess
 import com.example.util.simpletimetracker.data_local.base.withLockedCache
-import com.example.util.simpletimetracker.domain.extension.dropMillis
 import com.example.util.simpletimetracker.domain.extension.removeIf
 import com.example.util.simpletimetracker.domain.extension.replaceWith
 import com.example.util.simpletimetracker.domain.record.model.RunningRecord
@@ -50,10 +49,7 @@ class RunningRecordRepoImpl @Inject constructor(
         logMessage = "add",
         accessSource = { dao.insert(runningRecord.let(mapper::map)) },
         afterSourceAccess = { id ->
-            val new = runningRecord.copy(
-                id = id,
-                timeStarted = runningRecord.timeStarted.dropMillis(),
-            )
+            val new = runningRecord.copy(id = id)
             cache = cache?.replaceWith(new) { it.id == id }
         },
     )

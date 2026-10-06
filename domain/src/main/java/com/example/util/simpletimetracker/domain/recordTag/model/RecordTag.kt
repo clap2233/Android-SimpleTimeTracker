@@ -16,4 +16,5 @@ data class RecordTag(
     val archived: Boolean = false,
     val valueType: RecordTagValueType,
     val valueSuffix: String,
+    val purpose: RecordTagPurpose = RecordTagPurpose.GENERAL,
 )

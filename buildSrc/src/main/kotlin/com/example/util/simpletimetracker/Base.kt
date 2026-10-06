@@ -1,7 +1,7 @@
 package com.example.util.simpletimetracker
 
 object Base {
-    const val applicationId = "com.razeeman.util.simpletimetracker"
+    const val applicationId = "app.lifetimeclock.android"
     const val namespace = "com.example.util.simpletimetracker"
 
     // Raise by 2 to account for wear version code.

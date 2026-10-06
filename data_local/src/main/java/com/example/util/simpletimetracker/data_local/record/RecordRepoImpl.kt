@@ -3,7 +3,6 @@ package com.example.util.simpletimetracker.data_local.record
 import androidx.collection.LruCache
 import com.example.util.simpletimetracker.data_local.base.logDataAccess
 import com.example.util.simpletimetracker.data_local.base.withLockedCache
-import com.example.util.simpletimetracker.domain.extension.dropMillis
 import com.example.util.simpletimetracker.domain.record.model.Range
 import com.example.util.simpletimetracker.domain.record.model.Record
 import com.example.util.simpletimetracker.domain.record.repo.RecordRepo
@@ -207,7 +206,7 @@ class RecordRepoImpl @Inject constructor(
         accessSource = {
             recordDao.updateTimeEnded(
                 recordId = recordId,
-                timeEnded = timeEnded.dropMillis(),
+                timeEnded = timeEnded,
             )
         },
         afterSourceAccess = { clearCache() },

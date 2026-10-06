@@ -19,4 +19,13 @@ data class RunningRecordDBO(
     @Deprecated("storing tag ids moved to a separate database")
     @ColumnInfo(name = "tag_id")
     val tagId: Long,
+
+    @ColumnInfo(name = "summary", defaultValue = "''")
+    val summary: String = "",
+
+    @ColumnInfo(name = "zone_id")
+    val zoneId: String? = null,
+
+    @ColumnInfo(name = "template_id")
+    val templateId: Long? = null,
 )
