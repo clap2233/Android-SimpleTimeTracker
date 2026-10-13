@@ -8,7 +8,6 @@ import com.example.util.simpletimetracker.core.utils.SHORTCUT_NAVIGATION_RECORDS
 import com.example.util.simpletimetracker.core.utils.SHORTCUT_NAVIGATION_SETTINGS
 import com.example.util.simpletimetracker.core.utils.SHORTCUT_NAVIGATION_STATISTICS
 import com.example.util.simpletimetracker.domain.extension.orZero
-import com.example.util.simpletimetracker.domain.prefs.interactor.PrefsInteractor
 import com.example.util.simpletimetracker.feature_main.R
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
@@ -16,7 +15,6 @@ import javax.inject.Inject
 class MainTabsProvider @Inject constructor(
     val tabProviders: Map<Class<out NavigationTab>, @JvmSuppressWildcards NavigationTabProvider>,
     private val resourceRepo: ResourceRepo,
-    private val prefsInteractor: PrefsInteractor,
 ) {
 
     val tabsList: List<NavigationTab> by lazy { loadTabsList() }
@@ -43,6 +41,15 @@ class MainTabsProvider @Inject constructor(
             .let(::mapToDescription)
     }
 
+    fun mapPositionToLabel(position: Int): String? = when (mapPositionToTab(position)) {
+        NavigationTab.RunningRecords -> "现在"
+        NavigationTab.Records -> "时间"
+        NavigationTab.Statistics -> "回顾"
+        NavigationTab.Settings -> "设置"
+        NavigationTab.Goals -> "目标"
+        null -> null
+    }
+
     fun mapNavigationToPosition(value: String): Int? {
         return mapNavigationToTab(value)?.let(::mapTabToPosition)
     }
@@ -50,10 +57,10 @@ class MainTabsProvider @Inject constructor(
     @DrawableRes
     private fun mapToIcon(tab: NavigationTab?): Int {
         return when (tab) {
-            NavigationTab.RunningRecords -> R.drawable.tab_running_records
-            NavigationTab.Records -> R.drawable.tab_records
-            NavigationTab.Statistics -> R.drawable.tab_statistics
-            NavigationTab.Settings -> R.drawable.tab_settings
+            NavigationTab.RunningRecords -> R.drawable.life_clock_ui2_nav_now
+            NavigationTab.Records -> R.drawable.life_clock_ui2_nav_time
+            NavigationTab.Statistics -> R.drawable.life_clock_ui2_nav_review
+            NavigationTab.Settings -> R.drawable.life_clock_ui2_nav_settings
             NavigationTab.Goals -> R.drawable.tab_goals
             null -> R.drawable.unknown
         }
@@ -80,12 +87,9 @@ class MainTabsProvider @Inject constructor(
     }
 
     private fun loadTabsList(): List<NavigationTab> {
-        val showGoals = runBlocking { prefsInteractor.getShowGoalsSeparately() }
-
         return listOfNotNull(
             NavigationTab.RunningRecords,
             NavigationTab.Records,
-            NavigationTab.Goals.takeIf { showGoals },
             NavigationTab.Statistics,
             NavigationTab.Settings,
         )

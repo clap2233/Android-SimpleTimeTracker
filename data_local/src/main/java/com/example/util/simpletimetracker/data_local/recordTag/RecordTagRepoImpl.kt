@@ -5,13 +5,17 @@ import com.example.util.simpletimetracker.domain.extension.removeIf
 import com.example.util.simpletimetracker.domain.recordTag.model.RecordTag
 import com.example.util.simpletimetracker.domain.recordTag.repo.RecordTagRepo
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.room.withTransaction
+import com.example.util.simpletimetracker.data_local.database.AppDatabase
 
 @Singleton
 class RecordTagRepoImpl @Inject constructor(
     private val dao: RecordTagDao,
     private val mapper: RecordTagDataLocalMapper,
+    private val database: AppDatabase,
 ) : RecordTagRepo {
 
     private var cache: List<RecordTag>? = null
@@ -74,7 +78,15 @@ class RecordTagRepoImpl @Inject constructor(
 
     override suspend fun clear() = mutex.withLockedCache(
         logMessage = "clear",
-        accessSource = { dao.clear() },
+        accessSource = {
+            database.withTransaction {
+                dao.clear()
+                database.lifeClockSettingsDao().clear()
+            }
+        },
         afterSourceAccess = { cache = null },
     )
+    suspend fun invalidateCache() {
+        mutex.withLock { cache = null }
+    }
 }

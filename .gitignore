@@ -7,3 +7,11 @@
 /captures
 .externalNativeBuild
 .cxx
+node_modules/
+/cloud/dist/
+/cloud/.env
+/cloud/data/
+*.jks
+*.keystore
+*.p12
+__pycache__/

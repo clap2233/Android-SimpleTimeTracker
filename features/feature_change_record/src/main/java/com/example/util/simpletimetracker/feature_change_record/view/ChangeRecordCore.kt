@@ -120,6 +120,13 @@ class ChangeRecordCore(
     fun initUi(
         binding: ChangeRecordCoreLayoutBinding,
     ) = with(binding) {
+        binding.btnChangeRecordMore.setOnClickListener {
+            val actions = listOf("详细统计" to binding.btnChangeRecordStatistics, "删除记录" to binding.btnChangeRecordDelete)
+                .filter { it.second.visibility == android.view.View.VISIBLE && it.second.isEnabled }
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(binding.root.context)
+                .setTitle("更多操作").setItems(actions.map { it.first }.toTypedArray()) { _, index -> actions[index].second.performClick() }
+                .setNegativeButton("取消", null).show()
+        }
         val context = binding.root.context
 
         rvChangeRecordType.apply {
@@ -247,6 +254,7 @@ class ChangeRecordCore(
         )
 
         val isClosed = state.current is Closed
+        lifeClockExperienceEntry.root.isVisible = isClosed
         spaceChangeRecordFieldsTop.isVisible = !isClosed
         containerChangeRecordTime.isVisible = isClosed
         btnChangeRecordStatistics.isVisible =

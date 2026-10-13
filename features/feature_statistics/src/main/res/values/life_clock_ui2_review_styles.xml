@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="LifeClockUi2ReviewDateButton" parent="LifeClockUi2Button">
+        <item name="android:paddingStart">0dp</item>
+        <item name="android:paddingEnd">0dp</item>
+        <item name="android:minWidth">48dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="backgroundTint">@android:color/transparent</item>
+    </style>
+    <style name="LifeClockUi2ReviewToolbarButton" parent="LifeClockUi2ReviewDateButton">
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:paddingEnd">4dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">?appTextHintColor</item>
+    </style>
+    <style name="LifeClockUi2ReviewButtonTheme" parent="">
+        <item name="materialButtonStyle">@style/LifeClockUi2Button</item>
+    </style>
+    <style name="LifeClockUi2ReviewPrimaryButtonTheme" parent="">
+        <item name="materialButtonStyle">@style/LifeClockUi2PrimaryButton</item>
+    </style>
+</resources>

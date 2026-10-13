@@ -51,6 +51,38 @@ class MigrationTest {
     }
 
     @Test
+    fun migrateReviewStorageKeepsExistingTemplateData() {
+        helper.createDatabase(testDatabaseName, 35).use { database ->
+            database.execSQL("INSERT INTO recordShortcuts (id, type_id, comment, target_type, setting_action) VALUES (5, 2, 'tea first', 0, 0)")
+        }
+        helper.runMigrationsAndValidate(testDatabaseName, 36, true, *AppDatabaseMigrations.migrations.toTypedArray()).use { database ->
+            database.query("SELECT id, comment, name, summary FROM recordShortcuts WHERE id = 5").use { cursor ->
+                assertEquals(true, cursor.moveToFirst())
+                assertEquals(5L, cursor.getLong(0))
+                assertEquals("tea first", cursor.getString(1))
+                assertEquals("", cursor.getString(2))
+                assertEquals("", cursor.getString(3))
+            }
+        }
+    }
+
+    @Test
+    fun migrateRestoreMarkerPreservesDatasetIdentity() {
+        helper.createDatabase(testDatabaseName, 36).use { database ->
+            database.execSQL("INSERT INTO lifeClockSettings (id, data_set_id, happiness_tag_id, meaning_tag_id) VALUES (1, 'dataset', 7, 8)")
+        }
+        helper.runMigrationsAndValidate(testDatabaseName, 37, true, *AppDatabaseMigrations.migrations.toTypedArray()).use { database ->
+            database.query("SELECT data_set_id, happiness_tag_id, meaning_tag_id, restore_operation_id FROM lifeClockSettings").use { cursor ->
+                assertEquals(true, cursor.moveToFirst())
+                assertEquals("dataset", cursor.getString(0))
+                assertEquals(7L, cursor.getLong(1))
+                assertEquals(8L, cursor.getLong(2))
+                assertEquals(true, cursor.isNull(3))
+            }
+        }
+    }
+
+    @Test
     @Throws(IOException::class)
     fun migrateAll() {
         // Create earliest version of the database.

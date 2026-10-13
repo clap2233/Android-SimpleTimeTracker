@@ -2,6 +2,11 @@ package com.example.util.simpletimetracker.data_local.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.example.util.simpletimetracker.data_local.lifeClock.LifeClockSettingsDBO
+import com.example.util.simpletimetracker.data_local.lifeClock.LifeClockSettingsDao
+import com.example.util.simpletimetracker.data_local.review.ReviewDao
+import com.example.util.simpletimetracker.data_local.review.ReviewTrialDBO
+import com.example.util.simpletimetracker.data_local.review.WeeklyReviewDBO
 import com.example.util.simpletimetracker.data_local.activityFilter.ActivityFilterDBO
 import com.example.util.simpletimetracker.data_local.activityFilter.ActivityFilterDao
 import com.example.util.simpletimetracker.data_local.activitySuggestion.ActivitySuggestionDBO
@@ -55,6 +60,9 @@ import com.example.util.simpletimetracker.data_local.recordsFilter.FavouriteReco
         RecordTypeDBO::class,
         RunningRecordDBO::class,
         RecordPhotoDBO::class,
+        LifeClockSettingsDBO::class,
+        WeeklyReviewDBO::class,
+        ReviewTrialDBO::class,
         CategoryDBO::class,
         RecordTypeCategoryDBO::class,
         RecordTagDBO::class,
@@ -76,7 +84,7 @@ import com.example.util.simpletimetracker.data_local.recordsFilter.FavouriteReco
         FavouriteRecordsFilterDBO.MainDBO::class,
         FavouriteRecordsFilterDBO.FilterDBO::class,
     ],
-    version = 35,
+    version = 37,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -88,6 +96,10 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun runningRecordDao(): RunningRecordDao
 
     abstract fun recordPhotoDao(): RecordPhotoDao
+
+    abstract fun lifeClockSettingsDao(): LifeClockSettingsDao
+
+    abstract fun reviewDao(): ReviewDao
 
     abstract fun categoryDao(): CategoryDao
 

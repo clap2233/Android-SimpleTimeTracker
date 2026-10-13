@@ -2,10 +2,14 @@ package com.example.util.simpletimetracker.feature_views
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import com.example.util.simpletimetracker.feature_views.databinding.CategoryViewLayoutBinding
+import com.example.util.simpletimetracker.feature_views.extension.dpToPx
+import com.example.util.simpletimetracker.feature_views.extension.getThemedAttr
 import com.example.util.simpletimetracker.feature_views.extension.layoutInflater
 import com.example.util.simpletimetracker.feature_views.extension.visible
 import com.example.util.simpletimetracker.feature_views.viewData.RecordTypeIcon
@@ -21,6 +25,13 @@ class CategoryView @JvmOverloads constructor(
 ) {
 
     private val binding = CategoryViewLayoutBinding.inflate(layoutInflater, this)
+
+    var softAppearance: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            updateAppearance()
+        }
 
     init {
         ContextCompat.getColor(context, R.color.black).let(::setCardBackgroundColor)
@@ -76,8 +87,8 @@ class CategoryView @JvmOverloads constructor(
 
     var itemColor: Int = 0
         set(value) {
-            setCardBackgroundColor(value)
             field = value
+            updateAppearance()
         }
 
     var itemIcon: RecordTypeIcon = RecordTypeIcon.Image(0)
@@ -88,9 +99,8 @@ class CategoryView @JvmOverloads constructor(
 
     var itemIconColor: Int = 0
         set(value) {
-            binding.tvCategoryItemName.setTextColor(value)
-            binding.ivCategoryItemIcon.itemIconColor = value
             field = value
+            updateAppearance()
         }
 
     var itemIconAlpha: Float = 1.0f
@@ -98,6 +108,38 @@ class CategoryView @JvmOverloads constructor(
             binding.ivCategoryItemIcon.itemIconAlpha = value
             field = value
         }
+
+    private fun updateAppearance() = with(binding) {
+        setCardBackgroundColor(if (softAppearance) context.getThemedAttr(R.attr.appCardBackgroundColor) else itemColor)
+        radius = if (softAppearance) {
+            20.dpToPx().toFloat()
+        } else {
+            resources.getDimension(R.dimen.record_type_card_corner_radius)
+        }
+        minimumHeight = if (softAppearance) 48.dpToPx() else 0
+        tvCategoryItemName.setTextColor(
+            if (softAppearance) context.getThemedAttr(R.attr.appTextPrimaryColor) else itemIconColor,
+        )
+        tvCategoryItemName.setTypeface(null, if (softAppearance) Typeface.NORMAL else Typeface.BOLD)
+        ivCategoryItemIcon.apply {
+            background = if (softAppearance) {
+                GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(itemColor)
+                }
+            } else {
+                null
+            }
+            layoutParams = layoutParams.also { it.width = (if (softAppearance) 32 else 24).dpToPx() }
+            val padding = if (softAppearance) 5.dpToPx() else 0
+            setPadding(padding, padding, padding, padding)
+            itemIconColor = if (softAppearance) {
+                ColorUtils.readableContentColor(this@CategoryView.itemColor)
+            } else {
+                this@CategoryView.itemIconColor
+            }
+        }
+    }
 
     var itemIconVisible: Boolean = false
         set(value) {

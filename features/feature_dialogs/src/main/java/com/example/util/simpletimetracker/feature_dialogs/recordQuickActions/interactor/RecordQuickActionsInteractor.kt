@@ -166,15 +166,6 @@ class RecordQuickActionsInteractor @Inject constructor(
         old: List<RunningRecord>,
         newTypeId: Long,
     ) {
-        old.forEach { oldRecord ->
-            // Widgets will update on adding.
-            removeRunningRecordMediator.remove(
-                typeId = oldRecord.id,
-                updateWidgets = false,
-                updateNotificationSwitch = false,
-                checkPomodoroStop = oldRecord.id != newTypeId,
-            )
-        }
         old.firstOrNull()?.let { oldRecord ->
             addRunningRecordMediator.addAfterChange(
                 typeId = newTypeId,
@@ -184,6 +175,7 @@ class RecordQuickActionsInteractor @Inject constructor(
                     currentTags = oldRecord.tags,
                     newTypeId = newTypeId,
                 ),
+                sourceRecord = oldRecord,
             )
         }
     }

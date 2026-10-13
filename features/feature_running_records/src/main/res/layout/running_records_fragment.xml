@@ -1,10 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.recyclerview.widget.RecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/rvRunningRecordsList"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:clipChildren="false"
-    android:clipToPadding="false"
-    tools:itemCount="3"
-    tools:listitem="@layout/item_running_record_layout" />
+    android:orientation="vertical"
+    android:background="?appBackgroundColor">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/life_clock_ui2_card"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/nowTitle"
+                style="@style/LifeClockUi2Title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="留一点时间，给自己" />
+
+            <TextView
+                android:id="@+id/nowSubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="6dp"
+                android:text="今天也慢慢来"
+                android:textColor="?appTextHintColor"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/nowCat"
+            android:layout_width="88dp"
+            android:layout_height="88dp"
+            android:layout_marginStart="4dp"
+            android:alpha="?lifeClockIllustrationAlpha"
+            android:src="@drawable/life_clock_cat_tea"
+            android:scaleType="fitCenter"
+            android:importantForAccessibility="no" />
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvRunningRecordsList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        tools:itemCount="3"
+        tools:listitem="@layout/item_running_record_layout" />
+</LinearLayout>

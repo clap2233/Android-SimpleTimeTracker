@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.asFlow
 import com.example.util.simpletimetracker.core.extension.set
 import com.example.util.simpletimetracker.core.extension.toParams
 import com.example.util.simpletimetracker.core.interactor.RecordTagViewDataInteractor
@@ -55,6 +56,7 @@ import com.example.util.simpletimetracker.navigation.params.screen.TypesSelectio
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
 abstract class ChangeRecordBaseViewModel(
@@ -71,6 +73,7 @@ abstract class ChangeRecordBaseViewModel(
     private val changeRecordActionsDelegate: ChangeRecordActionsDelegateImpl,
     private val needTagValueSelectionInteractor: NeedTagValueSelectionInteractor,
     private val commentSelectionViewModelDelegate: CommentSelectionViewModelDelegate,
+    val detailDraft: RecordDetailsDraft,
 ) : ViewModel(),
     CommentSelectionViewModelDelegate by commentSelectionViewModelDelegate {
 
@@ -114,6 +117,49 @@ abstract class ChangeRecordBaseViewModel(
     protected var newTimeSplit: Long = 0
     protected var newSplitBeforeTypeId: Long? = null
     protected var newTags: List<RecordBase.Tag> = emptyList()
+
+    fun detailValues(): List<RecordBase.Tag> = newTags
+    val detailSelection = MutableLiveData<List<RecordBase.Tag>>(emptyList())
+
+    suspend fun detailTags() = recordTagInteractor.getAll().filter { it.id !in detailDraft.identity?.ratingTagIds.orEmpty() }
+
+    fun setDetailScore(id: Long, value: Int?) {
+        require(value == null || value in 1..5)
+        val old = newTags.firstOrNull { it.tagId == id }
+        val timestamp = if (value == null) null else if (old?.numericValue == value.toDouble() && old.ratedAt != null) old.ratedAt else System.currentTimeMillis()
+        newTags = newTags.filterNot { it.tagId == id } + RecordBase.Tag(id, value?.toDouble(), timestamp)
+        refreshDetails()
+    }
+
+    suspend fun setDetailGroup(purpose: com.example.util.simpletimetracker.domain.recordTag.model.RecordTagPurpose, ids: Set<Long>) {
+        val groupIds = detailTags().filter { it.purpose == purpose }.map { it.id }.toSet()
+        newTags = newTags.filterNot { it.tagId in groupIds } + ids.map { RecordBase.Tag(it, null) }
+        refreshDetails()
+    }
+
+    suspend fun createDetailTag(name: String, purpose: com.example.util.simpletimetracker.domain.recordTag.model.RecordTagPurpose): Long {
+        val clean = name.trim()
+        require(clean.isNotEmpty())
+        detailTags().firstOrNull { it.name == clean && it.purpose == purpose }?.let { return it.id }
+        return recordTagInteractor.add(
+            com.example.util.simpletimetracker.domain.recordTag.model.RecordTag(
+                name = clean, icon = "", color = com.example.util.simpletimetracker.domain.color.model.AppColor(0, ""),
+                iconColorSource = 0, note = "", valueType = com.example.util.simpletimetracker.domain.recordTag.model.RecordTagValueType.NONE, valueSuffix = "", purpose = purpose,
+            ),
+        )
+    }
+
+    private fun refreshDetails() = viewModelScope.launch {
+        updateCategoriesViewData()
+        updatePreview()
+    }
+
+    fun importDetailPhoto(uri: String) = importDetailPhotos(listOf(uri))
+
+    fun importDetailPhotos(uris: List<String>) = viewModelScope.launch {
+        detailDraft.ready.asFlow().first { it == true }
+        detailDraft.importPhotos(uris)
+    }
     protected var originalRecordId: Long = 0
     protected var originalTypeId: Long = 0
     protected var originalTags: List<RecordBase.Tag> = emptyList()
@@ -157,10 +203,17 @@ abstract class ChangeRecordBaseViewModel(
 
     override fun onCleared() {
         changeRecordActionsDelegate.clear()
+        val imported = detailDraft.imported.toList()
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                detailDraft.photoRepo.discardUnused(imported)
+            } catch (_: android.database.sqlite.SQLiteException) { /* Retry orphan cleanup with a future complete backup. */ }
+        }
         super.onCleared()
     }
 
     protected open suspend fun initializePreviewViewData() {
+        detailSelection.value = newTags
         commentSelectionViewModelDelegate.updateCommentsViewData()
         // Don't wait for the completion.
         viewModelScope.launch { initializeActions() }
@@ -948,6 +1001,7 @@ abstract class ChangeRecordBaseViewModel(
     protected suspend fun updateCategoriesViewData(
         fromValueChange: Boolean = false,
     ) {
+        detailSelection.value = newTags
         val data = loadCategoriesViewData(fromValueChange)
         categories.set(data)
     }

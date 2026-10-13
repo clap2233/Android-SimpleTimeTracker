@@ -41,6 +41,12 @@ class RecordView @JvmOverloads constructor(
         set(value) {
             setCardBackgroundColor(value)
             field = value
+            val contentColor = ColorUtils.readableContentColor(value)
+            with(binding) {
+                listOf(tvRecordItemName, tvRecordItemTimeStarted, tvRecordItemTimeSeparator, tvRecordItemTimeFinished, tvRecordItemDuration, tvRecordItemComment).forEach { it.setTextColor(contentColor) }
+                ivRecordItemIcon.itemIconColor = contentColor
+            }
+            setItemName()
         }
 
     var itemTagColor: Int = Color.WHITE
@@ -155,7 +161,7 @@ class RecordView @JvmOverloads constructor(
         } else {
             val name = "$itemName - $itemTagName"
             tvRecordItemName.text = name.toSpannableString().setForegroundSpan(
-                color = itemTagColor,
+                color = ColorUtils.readableContentColor(itemColor, itemTagColor),
                 start = itemName.length,
                 length = name.length - itemName.length,
             )

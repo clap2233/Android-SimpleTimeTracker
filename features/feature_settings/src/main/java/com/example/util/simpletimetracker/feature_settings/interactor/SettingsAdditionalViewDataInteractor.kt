@@ -53,15 +53,6 @@ class SettingsAdditionalViewDataInteractor @Inject constructor(
         )
 
         if (!isCollapsed) {
-            result += SettingsSelectorViewData(
-                block = SettingsBlock.AdditionalIgnoreShort,
-                title = resourceRepo.getString(R.string.settings_ignore_short_records),
-                subtitle = resourceRepo.getString(R.string.settings_ignore_short_records_hint),
-                selectedValue = loadIgnoreShortRecordsViewData(),
-                bottomSpaceIsVisible = true,
-                dividerIsVisible = true,
-            )
-
             val showRecordTagSelection = prefsInteractor.getShowRecordTagSelection()
             result += SettingsCheckboxWithButtonViewData(
                 data = SettingsCheckboxViewData(
@@ -110,15 +101,6 @@ class SettingsAdditionalViewDataInteractor @Inject constructor(
                 title = resourceRepo.getString(R.string.settings_keep_statistics_range),
                 subtitle = resourceRepo.getString(R.string.settings_keep_statistics_range_hint),
                 isChecked = prefsInteractor.getKeepStatisticsRange(),
-                bottomSpaceIsVisible = true,
-                dividerIsVisible = true,
-            )
-
-            result += SettingsCheckboxViewData(
-                block = SettingsBlock.AdditionalRetroactiveTrackingMode,
-                title = resourceRepo.getString(R.string.settings_retroactive_tracking_mode),
-                subtitle = resourceRepo.getString(R.string.settings_retroactive_tracking_mode_hint),
-                isChecked = prefsInteractor.getRetroactiveTrackingMode(),
                 bottomSpaceIsVisible = true,
                 dividerIsVisible = true,
             )

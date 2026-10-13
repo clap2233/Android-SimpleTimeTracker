@@ -22,42 +22,15 @@
             android:animateLayoutChanges="true"
             android:clipChildren="false">
 
-            <com.example.util.simpletimetracker.feature_views.ButtonIconView
-                android:id="@+id/btnChangeRecordStatistics"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/edit_screen_button_margin_horizontal"
-                android:layout_marginTop="8dp"
-                android:visibility="gone"
-                app:itemButtonIconRes="@drawable/statistics"
-                app:itemButtonIconText="@string/shortcut_navigation_statistics"
-                app:layout_constraintEnd_toStartOf="@id/btnChangeRecordDelete"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_goneMarginEnd="@dimen/edit_screen_button_margin_horizontal"
-                tools:visibility="visible" />
-
-            <com.example.util.simpletimetracker.feature_views.ButtonIconView
-                android:id="@+id/btnChangeRecordDelete"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:layout_marginEnd="@dimen/edit_screen_button_margin_horizontal"
-                android:visibility="gone"
-                app:itemButtonIconRes="@drawable/delete"
-                app:itemButtonIconText="@string/archive_dialog_delete"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toEndOf="@id/btnChangeRecordStatistics"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_goneMarginStart="@dimen/edit_screen_button_margin_horizontal"
-                tools:visibility="visible" />
-
-            <androidx.constraintlayout.widget.Barrier
-                android:id="@+id/barrierChangeRecordButtons"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:barrierDirection="bottom"
-                app:constraint_referenced_ids="btnChangeRecordStatistics, btnChangeRecordDelete" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone">
+                <com.example.util.simpletimetracker.feature_views.ButtonIconView android:id="@+id/btnChangeRecordStatistics" android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone" />
+                <com.example.util.simpletimetracker.feature_views.ButtonIconView android:id="@+id/btnChangeRecordDelete" android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone" />
+            </LinearLayout>
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnChangeRecordMore" style="@style/LifeClockUi2Button"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginEnd="16dp"
+                android:text="更多操作" app:layout_constraintTop_toTopOf="parent" app:layout_constraintEnd_toEndOf="parent" />
+            <androidx.constraintlayout.widget.Barrier android:id="@+id/barrierChangeRecordButtons" android:layout_width="0dp" android:layout_height="0dp"
+                app:barrierDirection="bottom" app:constraint_referenced_ids="btnChangeRecordMore" />
 
             <Space
                 android:id="@+id/spaceChangeRecordFieldsTop"
@@ -72,7 +45,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/edit_screen_field_top_margin"
                 android:clipChildren="false"
-                app:layout_constraintTop_toBottomOf="@id/spaceChangeRecordFieldsTop">
+                app:layout_constraintTop_toBottomOf="@id/lifeClockExperienceEntry">
 
                 <androidx.cardview.widget.CardView
                     android:id="@+id/fieldChangeRecordTimeStarted"
@@ -321,6 +294,10 @@
 
             </androidx.cardview.widget.CardView>
 
+            <include android:id="@+id/lifeClockExperienceEntry" layout="@layout/life_clock_experience_entry"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                app:layout_constraintTop_toBottomOf="@id/spaceChangeRecordFieldsTop" />
+
             <androidx.cardview.widget.CardView
                 android:id="@+id/fieldChangeRecordCategory"
                 style="@style/InputFieldCard"
@@ -524,8 +501,9 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnChangeRecordSave"
-        style="@style/AppButtonActive"
+        style="@style/LifeClockUi2PrimaryButton"
         android:layout_width="0dp"
+        android:layout_height="wrap_content"
         android:layout_marginHorizontal="@dimen/edit_screen_margin_horizontal"
         android:text="@string/change_record_save"
         app:layout_constraintBottom_toBottomOf="parent"

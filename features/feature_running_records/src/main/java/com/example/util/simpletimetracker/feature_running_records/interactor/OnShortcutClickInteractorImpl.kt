@@ -1,7 +1,7 @@
 package com.example.util.simpletimetracker.feature_running_records.interactor
 
 import com.example.util.simpletimetracker.domain.prefs.interactor.PrefsInteractor
-import com.example.util.simpletimetracker.domain.recordAction.interactor.RecordActionRepeatMediator
+import com.example.util.simpletimetracker.domain.record.interactor.AddRunningRecordMediator
 import com.example.util.simpletimetracker.domain.recordShortcut.interactor.RecordShortcutInteractor
 import com.example.util.simpletimetracker.domain.recordShortcut.model.RecordShortcut
 import com.example.util.simpletimetracker.domain.recordType.model.CardOrder
@@ -21,7 +21,7 @@ import javax.inject.Inject
 class OnShortcutClickInteractorImpl @Inject constructor(
     private val router: Router,
     private val prefsInteractor: PrefsInteractor,
-    private val recordActionRepeatMediator: RecordActionRepeatMediator,
+    private val addRunningRecordMediator: AddRunningRecordMediator,
     private val recordShortcutInteractor: RecordShortcutInteractor,
     private val onSettingChangedInteractor: OnSettingChangedInteractor,
     private val settingsCardOrderMapper: SettingsCardOrderMapper,
@@ -31,7 +31,7 @@ class OnShortcutClickInteractorImpl @Inject constructor(
     override suspend fun execute(data: RecordShortcutViewData) {
         val shortcut = recordShortcutInteractor.get(data.id) ?: return
         when (val target = shortcut.target) {
-            is RecordShortcut.Target.Record -> executeRecordAction(target)
+            is RecordShortcut.Target.Record -> executeRecordAction(shortcut.id, target)
             is RecordShortcut.Target.Setting -> executeSettingAction(target)
         }
     }
@@ -56,11 +56,13 @@ class OnShortcutClickInteractorImpl @Inject constructor(
         }
     }
 
-    private suspend fun executeRecordAction(target: RecordShortcut.Target.Record) {
-        recordActionRepeatMediator.execute(
+    private suspend fun executeRecordAction(id: Long, target: RecordShortcut.Target.Record) {
+        addRunningRecordMediator.startTimer(
             typeId = target.typeId,
             comment = target.comment,
             tags = target.tags,
+            summary = target.summary,
+            templateId = id,
         )
     }
 

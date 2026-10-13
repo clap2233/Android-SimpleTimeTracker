@@ -16,6 +16,7 @@ fun createRecordTypeAdapterDelegate(
     onItemLongClick: ((ViewData, Pair<Any, String>) -> Unit)? = null,
     withTransition: Boolean = false,
     transitionNamePrefix: String = TransitionNames.RECORD_TYPE,
+    softAppearance: Boolean = false,
 ) = createRecyclerBindingAdapterDelegate<ViewData, Binding>(
     Binding::inflate,
 ) { binding, item, _ ->
@@ -29,6 +30,8 @@ fun createRecordTypeAdapterDelegate(
             item.height.dpToPx().let { params.height = it }
         }
 
+        this.softAppearance = softAppearance
+        itemIsActive = item.itemIsFiltered
         itemIsRow = item.asRow
         itemColor = item.color
         itemIcon = item.iconId

@@ -1,9 +1,8 @@
 package com.example.util.simpletimetracker.feature_base_adapter.recordTypeSpecial
 
 import com.example.util.simpletimetracker.feature_base_adapter.createRecyclerBindingAdapterDelegate
-import com.example.util.simpletimetracker.feature_views.extension.dpToPx
 import com.example.util.simpletimetracker.feature_views.extension.setOnClickWith
-import com.example.util.simpletimetracker.feature_base_adapter.databinding.ItemRecordTypeLayoutBinding as Binding
+import com.example.util.simpletimetracker.feature_base_adapter.databinding.ItemRecordTypeActionBinding as Binding
 import com.example.util.simpletimetracker.feature_base_adapter.recordTypeSpecial.RunningRecordTypeSpecialViewData as ViewData
 
 fun createRunningRecordTypeSpecialAdapterDelegate(
@@ -15,16 +14,7 @@ fun createRunningRecordTypeSpecialAdapterDelegate(
     with(binding.viewRecordTypeItem) {
         item as ViewData
 
-        layoutParams = layoutParams.also { params ->
-            item.width.dpToPx().let { params.width = it }
-            item.height.dpToPx().let { params.height = it }
-        }
-
-        itemIsRow = item.asRow
-        itemColor = item.color
-        itemIcon = item.iconId
-        itemName = item.name
-        itemCheckState = item.checkState
+        text = if (item.type is ViewData.Type.Default) "默认活动" else item.name
         setOnClickWith(item, onItemClick)
     }
 }

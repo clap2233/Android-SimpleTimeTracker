@@ -3,6 +3,13 @@ package com.example.util.simpletimetracker.utils
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.Espresso.pressBack
+import androidx.test.espresso.ViewAction
+import androidx.test.espresso.UiController
+import android.view.View
+import android.widget.Button
+import androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom
+import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
+import org.hamcrest.Matcher
 import androidx.test.espresso.action.ViewActions.replaceText
 import androidx.test.espresso.contrib.PickerActions.setDate
 import androidx.test.espresso.contrib.PickerActions.setTime
@@ -43,6 +50,8 @@ object NavUtils {
     fun openRecordsScreen() {
         onView(withId(mainR.id.mainTabs)).perform(selectTabAtPosition(1))
         Thread.sleep(1000)
+        onView(withId(com.example.util.simpletimetracker.feature_records.R.id.timeWeekToggle))
+            .perform(clickButtonWithText("列表"))
     }
 
     fun openGoalsScreen() {
@@ -53,6 +62,24 @@ object NavUtils {
     fun openStatisticsScreen() {
         onView(withId(mainR.id.mainTabs)).perform(selectTabAtPosition(2))
         Thread.sleep(1000)
+        onView(allOf(withId(com.example.util.simpletimetracker.feature_statistics.R.id.reviewStatistics), isDisplayed()))
+            .perform(clickButtonWithText("详细统计"))
+    }
+
+    fun openReviewScreen() {
+        onView(withId(mainR.id.mainTabs)).perform(selectTabAtPosition(2))
+        Thread.sleep(1000)
+        onView(allOf(withId(com.example.util.simpletimetracker.feature_statistics.R.id.reviewStatistics), isDisplayed()))
+            .perform(clickButtonWithText("返回周回顾"))
+    }
+
+    private fun clickButtonWithText(text: String) = object : ViewAction {
+        override fun getConstraints(): Matcher<View> = isAssignableFrom(Button::class.java)
+        override fun getDescription() = "Open the requested legacy or review view"
+        override fun perform(uiController: UiController, view: View) {
+            if ((view as Button).text == text) view.performClick()
+            uiController.loopMainThreadUntilIdle()
+        }
     }
 
     fun openSettingsScreen() {

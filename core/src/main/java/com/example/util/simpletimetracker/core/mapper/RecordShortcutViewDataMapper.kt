@@ -84,7 +84,7 @@ class RecordShortcutViewDataMapper @Inject constructor(
         } ?: colorMapper.toUntrackedColor(isDarkTheme)
 
         val name = listOf(
-            recordType?.name.orEmpty(),
+            shortcut.name.ifBlank { recordType?.name.orEmpty() },
             recordTagFullNameMapper.getFullName(
                 tags = recordTags.filter { it.id in tagIds },
                 tagData = shortcut.tags,
@@ -98,10 +98,7 @@ class RecordShortcutViewDataMapper @Inject constructor(
         val data = CategoryViewData.Record.Tagged(
             id = 0,
             name = name,
-            iconColor = colorMapper.toIconColor(
-                isDarkTheme = isDarkTheme,
-                isFiltered = isFiltered,
-            ),
+            iconColor = com.example.util.simpletimetracker.feature_views.ColorUtils.readableContentColor(color),
             color = color,
             icon = icon,
             iconAlpha = colorMapper.toIconAlpha(icon, isFiltered),

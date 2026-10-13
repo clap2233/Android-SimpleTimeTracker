@@ -8,6 +8,16 @@ import androidx.core.graphics.ColorUtils
 object ColorUtils {
 
     @ColorInt
+    fun readableContentColor(@ColorInt background: Int, @ColorInt preferred: Int = 0xFF26382D.toInt()): Int {
+        val opaque = ColorUtils.setAlphaComponent(background, 255)
+        return when {
+            ColorUtils.calculateContrast(preferred, opaque) >= 4.5 -> preferred
+            ColorUtils.calculateContrast(Color.WHITE, opaque) >= 4.5 -> Color.WHITE
+            else -> Color.BLACK
+        }
+    }
+
+    @ColorInt
     fun darkenColor(@ColorInt color: Int): Int {
         return FloatArray(3).apply {
             Color.colorToHSV(color, this)

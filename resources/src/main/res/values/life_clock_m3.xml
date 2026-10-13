@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="life_clock_empty_interval">End time must be later than start time.</string>
+    <string name="life_clock_future_time">This time has not happened yet.</string>
+    <string name="life_clock_overlap">This interval overlaps another record. Adjust their boundary together.</string>
+    <string name="life_clock_not_quarter">Confirmation requires a positive multiple of 15 minutes. You can save it as pending.</string>
+    <string name="life_clock_multiple_running">Existing timers overlap. Resolve them before starting another activity.</string>
+    <string name="life_clock_gap">Only adjoining intervals can be combined. Assign the gap explicitly first.</string>
+    <string name="life_clock_tag_conflict">Choose which numeric values to retain.</string>
+    <string name="life_clock_invalid_score">Happiness and meaning must be whole numbers from 1 to 5 or empty.</string>
+    <string name="life_clock_record_changed">The record has changed. Reopen it and try again.</string>
+    <string name="life_clock_pending">Pending</string>
+    <string name="life_clock_confirmed">Confirmed</string>
+    <string name="life_clock_needs_repair">Historical interval needs repair</string>
+    <string name="life_clock_organize">Organize time</string>
+    <string name="life_clock_save_pending">Save as pending</string>
+    <string name="life_clock_confirm">Save and confirm</string>
+    <string name="life_clock_merge_previous">Combine with previous record</string>
+    <string name="life_clock_split">Split this record</string>
+    <string name="life_clock_boundary_previous">Adjust boundary with previous record</string>
+    <string name="life_clock_boundary_next">Adjust boundary with next record</string>
+    <string name="life_clock_minutes_before">Minutes before the new boundary</string>
+    <string name="life_clock_keep_before">Keep photos and numeric values in the first part</string>
+    <string name="life_clock_keep_after">Keep photos and numeric values in the second part</string>
+    <string name="life_clock_current_value">Keep current value</string>
+    <string name="life_clock_previous_value">Keep previous value</string>
+    <string name="life_clock_clear_value">Leave empty</string>
+    <string name="life_clock_current_state">Current state: %1$s</string>
+    <string name="life_clock_confirm_operation">This operation saves the displayed category, notes and times. Check the preview before applying.</string>
+</resources>

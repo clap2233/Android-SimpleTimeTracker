@@ -1,6 +1,7 @@
 package com.example.util.simpletimetracker.feature_main.view
 
 import android.graphics.ColorFilter
+import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
@@ -64,6 +65,7 @@ class MainFragment : BaseFragment<Binding>() {
     private val unselectedColorFilter by lazy { getColorFilter(R.attr.appTabUnselectedColor) }
     private var backPressedCallback: OnBackPressedCallback? = null
     private var shortcutNavigationHandled = false
+    private var restoredPage: Int? = null
     private val mainPagePosition by lazy {
         mainTabsProvider.mainTab.let(mainTabsProvider::mapTabToPosition)
     }
@@ -72,6 +74,16 @@ class MainFragment : BaseFragment<Binding>() {
         setupPager()
         checkForShortcutNavigation()
         widgetInteractor.initializeCachedViews()
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        restoredPage = savedInstanceState?.getInt("lifeClockPage")
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putInt("lifeClockPage", restoredPage ?: mainPagePosition)
+        super.onSaveInstanceState(outState)
     }
 
     override fun initUx() {
@@ -99,6 +111,11 @@ class MainFragment : BaseFragment<Binding>() {
         }
 
         TabLayoutMediator(mainTabs, mainPager) { tab, position ->
+            tab.setCustomView(R.layout.life_clock_ui2_nav_item)
+            tab.customView?.findViewById<android.widget.TextView>(R.id.lifeClockTabLabel)?.text = mainTabsProvider.mapPositionToLabel(position)
+            tab.customView?.findViewById<android.widget.ImageView>(R.id.lifeClockTabIcon)?.setImageResource(mainTabsProvider.mapPositionToIcon(position))
+            tab.customView?.isSelected = position == mainPagePosition
+            mainTabsProvider.mapPositionToLabel(position)?.let(tab::setText)
             position.let(mainTabsProvider::mapPositionToIcon)
                 .let(tab::setIcon)
             position.let(mainTabsProvider::mapPositionToDescription)
@@ -120,18 +137,21 @@ class MainFragment : BaseFragment<Binding>() {
 
                 override fun onTabUnselected(tab: TabLayout.Tab?) {
                     tab?.icon?.colorFilter = unselectedColorFilter
+                    tab?.customView?.isSelected = false
                     tab?.position
                         ?.let(mainTabsProvider::mapPositionToTab)
                         ?.let(mainTabsViewModel::onTabUnselected)
                 }
 
                 override fun onTabSelected(tab: TabLayout.Tab?) {
+                    tab?.position?.let { restoredPage = it }
                     tab?.icon?.colorFilter = selectedColorFilter
+                    tab?.customView?.isSelected = true
                     backPressedCallback?.isEnabled = tab?.position.orZero() != mainPagePosition
                 }
             },
         )
-        mainPager.setCurrentItem(mainPagePosition, false)
+        mainPager.setCurrentItem(restoredPage?.coerceIn(0, mainTabs.tabCount - 1) ?: mainPagePosition, false)
         mainPager.findRecycler()?.changeDragSensitivity(2f)
     }
 
@@ -154,10 +174,10 @@ class MainFragment : BaseFragment<Binding>() {
         TabLayout.INDICATOR_GRAVITY_BOTTOM
             .let(mainTabs::setSelectedTabIndicatorGravity)
 
-        mainTabsDivider.isVisible = isAtTheBottom
+        mainTabsDivider.isVisible = false
 
         (0..<mainTabs.tabCount).forEach { index ->
-            val paddingVertical = if (isAtTheBottom) 16.dpToPx() else 0
+            val paddingVertical = if (isAtTheBottom) 4.dpToPx() else 0
             mainTabs.getTabAt(index)?.view
                 ?.updatePadding(top = paddingVertical, bottom = paddingVertical)
         }

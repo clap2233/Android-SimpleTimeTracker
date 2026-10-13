@@ -68,6 +68,7 @@ class ChangeRunningRecordViewModel @Inject constructor(
     private val updateRunningRecordsInteractor: UpdateRunningRecordsInteractor,
     private val addTagToTypeIfNotExistMediator: AddTagToTypeIfNotExistMediator,
     private val commentSelectionViewModelDelegate: CommentSelectionViewModelDelegate,
+    detailDraft: com.example.util.simpletimetracker.feature_change_record.viewModel.RecordDetailsDraft,
 ) : ChangeRecordBaseViewModel(
     router = router,
     resourceRepo = resourceRepo,
@@ -82,6 +83,7 @@ class ChangeRunningRecordViewModel @Inject constructor(
     changeRecordActionsDelegate = changeRecordActionsDelegate,
     needTagValueSelectionInteractor = needTagValueSelectionInteractor,
     commentSelectionViewModelDelegate = commentSelectionViewModelDelegate,
+    detailDraft = detailDraft,
 ) {
 
     lateinit var extra: ChangeRunningRecordParams
@@ -141,21 +143,30 @@ class ChangeRunningRecordViewModel @Inject constructor(
     override suspend fun onSaveClickDelegate(
         doAfter: suspend () -> Unit,
     ) {
+        if (detailDraft.busy.value == true || detailDraft.ready.value != true) {
+            detailDraft.error.setValue(R.string.life_clock_photo_busy)
+            (saveButtonEnabled as MutableLiveData).value = true
+            return
+        }
         // Widgets will update on adding.
         val original = runningRecordInteractor.get(extra.id)
-        removeRunningRecordMediator.remove(
-            typeId = extra.id,
-            updateWidgets = false,
-            updateNotificationSwitch = false,
-            checkPomodoroStop = extra.id != newTypeId,
-        )
-        addRunningRecordMediator.addAfterChange(
-            typeId = newTypeId,
-            timeStarted = newTimeStarted,
-            comment = commentSelectionViewModelDelegate.newComment,
-            tags = newTags,
-            sourceRecord = original,
-        )
+        val saved = try {
+            addRunningRecordMediator.addAfterChange(
+                typeId = newTypeId,
+                timeStarted = newTimeStarted,
+                comment = commentSelectionViewModelDelegate.newComment,
+                tags = newTags,
+                sourceRecord = original?.copy(summary = detailDraft.summary),
+                photos = detailDraft.photos.value.orEmpty(),
+            )
+        } catch (_: android.database.sqlite.SQLiteException) {
+            detailDraft.error.setValue(R.string.life_clock_details_save_failed)
+            false
+        }
+        if (!saved) {
+            (saveButtonEnabled as MutableLiveData).value = true
+            return
+        }
         addTagToTypeIfNotExistMediator.execute(
             typeId = newTypeId,
             tagIds = newTags.map(RecordBase.Tag::tagId),
@@ -211,6 +222,7 @@ class ChangeRunningRecordViewModel @Inject constructor(
     }
 
     override suspend fun initializePreviewViewData() {
+        detailDraft.load(runningRecordInteractor.get(extra.id)?.summary.orEmpty(), extra.id, true)
         if (extra.id != 0L) {
             runningRecordInteractor.get(extra.id)?.let { record ->
                 newTypeId = record.id.orZero()

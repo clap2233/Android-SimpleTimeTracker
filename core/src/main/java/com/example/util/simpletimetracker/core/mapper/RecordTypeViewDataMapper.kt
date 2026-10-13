@@ -60,7 +60,7 @@ class RecordTypeViewDataMapper @Inject constructor(
             id = recordType.id,
             name = recordType.name,
             iconId = iconMapper.mapIcon(recordType.icon),
-            iconColor = colorMapper.toIconColor(isDarkTheme),
+            iconColor = com.example.util.simpletimetracker.feature_views.ColorUtils.readableContentColor(mapColor(recordType.color, isDarkTheme)),
             color = mapColor(recordType.color, isDarkTheme),
             width = recordTypeCardSizeMapper.toCardWidth(numberOfCards),
             height = recordTypeCardSizeMapper.toCardHeight(numberOfCards),

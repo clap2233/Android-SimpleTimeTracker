@@ -1,0 +1,13 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content" android:layout_height="wrap_content"
+    android:orientation="vertical" android:gravity="center" android:minHeight="60dp"
+    android:paddingTop="4dp" android:paddingBottom="4dp" android:duplicateParentState="true"
+    android:importantForAccessibility="noHideDescendants">
+    <androidx.appcompat.widget.AppCompatImageView android:id="@+id/lifeClockTabIcon"
+        android:layout_width="56dp" android:layout_height="32dp" android:paddingStart="16dp" android:paddingEnd="16dp"
+        android:paddingTop="4dp" android:paddingBottom="4dp" android:duplicateParentState="true"
+        android:background="@drawable/life_clock_ui2_nav_pill" app:tint="@color/life_clock_ui2_nav_color" />
+    <TextView android:id="@+id/lifeClockTabLabel" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:paddingTop="3dp" android:textSize="12sp" android:textColor="@color/life_clock_ui2_nav_color"
+        android:duplicateParentState="true" android:fontFamily="sans-serif-medium" />
+</LinearLayout>

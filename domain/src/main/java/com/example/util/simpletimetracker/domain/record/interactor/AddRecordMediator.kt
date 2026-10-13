@@ -13,8 +13,8 @@ class AddRecordMediator @Inject constructor(
     suspend fun add(
         record: Record,
         updateNotificationSwitch: Boolean = true,
-    ) {
-        add(
+    ): Boolean {
+        return add(
             records = listOf(record),
             updateNotificationSwitch = updateNotificationSwitch,
         )
@@ -23,13 +23,14 @@ class AddRecordMediator @Inject constructor(
     suspend fun add(
         records: List<Record>,
         updateNotificationSwitch: Boolean = true,
-    ) {
-        records.forEach { recordInteractor.add(it) }
+    ): Boolean {
+        if (!recordInteractor.addAll(records)) return false
         doAfterAdd(
             typeIds = records.map(Record::typeId).distinct(),
             tagIds = records.map(Record::tags).flatten().map(RecordBase.Tag::tagId).distinct(),
             updateNotificationSwitch = updateNotificationSwitch,
         )
+        return true
     }
 
     suspend fun doAfterAdd(

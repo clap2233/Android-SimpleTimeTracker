@@ -7,6 +7,7 @@ import com.example.util.simpletimetracker.domain.extension.replaceWith
 import com.example.util.simpletimetracker.domain.record.model.RunningRecord
 import com.example.util.simpletimetracker.domain.record.repo.RunningRecordRepo
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -69,5 +70,9 @@ class RunningRecordRepoImpl @Inject constructor(
     private suspend fun initializeCache() {
         logDataAccess("initializeCache")
         cache = dao.getAll().map(mapper::map)
+    }
+
+    override suspend fun invalidateCache() {
+        mutex.withLock { cache = null }
     }
 }

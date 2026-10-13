@@ -30,6 +30,7 @@ class RecordTagInteractor @Inject constructor(
     private val prefsInteractor: PrefsInteractor,
     private val sortCardsInteractor: SortCardsInteractor,
     private val recordTypeGoalInteractor: RecordTypeGoalInteractor,
+    private val settingsRepo: com.example.util.simpletimetracker.domain.lifeClock.repo.LifeClockSettingsRepo,
 ) {
 
     suspend fun isEmpty(): Boolean {
@@ -81,7 +82,8 @@ class RecordTagInteractor @Inject constructor(
         repo.restore(id)
     }
 
-    suspend fun remove(id: Long) {
+    suspend fun remove(id: Long): Boolean {
+        if (id in settingsRepo.getOrCreate().ratingTagIds) return false
         prefsInteractor.getFilteredTags().toMutableList()
             .apply { remove(id) }
             .let { prefsInteractor.setFilteredTags(it) }
@@ -96,6 +98,7 @@ class RecordTagInteractor @Inject constructor(
         recordTypeToDefaultTagRepo.removeAll(id)
         recordTypeGoalInteractor.removeByTag(id)
         complexRuleInteractor.removeTagId(id)
+        return true
     }
 
     fun getActivityOrderProvider(

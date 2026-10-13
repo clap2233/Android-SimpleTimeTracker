@@ -5,7 +5,7 @@ import com.example.util.simpletimetracker.core.model.NavigationTabKey
 import com.example.util.simpletimetracker.core.model.NavigationTabProvider
 import com.example.util.simpletimetracker.feature_records.api.RecordsContainerOptionsListMapper
 import com.example.util.simpletimetracker.feature_records.mapper.RecordsContainerOptionsListMapperImpl
-import com.example.util.simpletimetracker.feature_records.view.RecordsContainerFragment
+import com.example.util.simpletimetracker.feature_records.view.TimeWeekFragment
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -25,7 +25,7 @@ interface RecordsModule {
         @IntoMap
         @NavigationTabKey(NavigationTab.Records::class)
         fun bindNavigationTab(): NavigationTabProvider {
-            return NavigationTabProvider { RecordsContainerFragment.newInstance() }
+            return NavigationTabProvider { TimeWeekFragment() }
         }
     }
 }

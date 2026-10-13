@@ -21,4 +21,10 @@ data class RecordShortcutDBO(
 
     @ColumnInfo(name = "setting_action")
     val settingAction: Long,
+
+    @ColumnInfo(name = "name", defaultValue = "''")
+    val name: String = "",
+
+    @ColumnInfo(name = "summary", defaultValue = "''")
+    val summary: String = "",
 )

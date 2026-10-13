@@ -14,6 +14,8 @@ data class RecordShortcut(
             val typeId: Long,
             val comment: String,
             val tags: List<RecordBase.Tag>,
+            val name: String = "",
+            val summary: String = "",
         ) : Target {
             override val mode: TargetMode = TargetMode.Record
         }

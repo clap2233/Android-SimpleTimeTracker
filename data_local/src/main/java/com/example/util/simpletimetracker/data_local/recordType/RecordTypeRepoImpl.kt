@@ -5,6 +5,7 @@ import com.example.util.simpletimetracker.domain.extension.removeIf
 import com.example.util.simpletimetracker.domain.recordType.model.RecordType
 import com.example.util.simpletimetracker.domain.recordType.repo.RecordTypeRepo
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -65,4 +66,7 @@ class RecordTypeRepoImpl @Inject constructor(
         accessSource = { recordTypeDao.clear() },
         afterSourceAccess = { cache = null },
     )
+    suspend fun invalidateCache() {
+        mutex.withLock { cache = null }
+    }
 }

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="life_clock_data_restoring">Restoring a backup. Please try again after it finishes.</string>
+    <string name="life_clock_full_backup">Complete backup and recovery</string>
+    <string name="life_clock_export_full">Back up records and photos (ZIP)</string>
+    <string name="life_clock_restore_full">Restore a complete backup</string>
+    <string name="life_clock_recovery_copy">Export the copy saved before restore</string>
+    <string name="life_clock_export_full_csv">Export complete record CSV</string>
+    <string name="life_clock_export_full_ics">Export complete record calendar (ICS)</string>
+    <string name="life_clock_legacy_backup">Legacy backup (no photos)</string>
+    <string name="life_clock_backup_done">Complete backup saved.</string>
+    <string name="life_clock_restore_done">Backup restored. Ongoing entries were ended at the backup time.</string>
+    <string name="life_clock_backup_invalid">This backup is invalid or incomplete. Your current data was not replaced.</string>
+    <string name="life_clock_backup_unsupported">This backup needs a newer app version.</string>
+    <string name="life_clock_backup_media">A photo is missing or damaged. Your current data was not replaced.</string>
+    <string name="life_clock_backup_space">Not enough storage to complete this operation.</string>
+    <string name="life_clock_backup_io">Could not complete the operation. Check file access and storage.</string>
+    <string name="life_clock_backup_busy">Another backup operation is in progress.</string>
+    <string name="life_clock_backup_progress">Please wait…</string>
+    <string name="life_clock_restore_preview">Backup from %1$s\nRecords: %2$d\nOngoing entries: %3$d\nPhotos: %4$d\nWeekly reviews: %5$d\nIntervals needing repair: %6$d\n\nRestoring replaces the current data. A complete recovery copy is saved first. Ongoing entries stop at the backup time, including their scores and photos; zero-duration entries remain pending repair. Nothing resumes automatically.</string>
+    <string name="life_clock_restore_apply">Restore this backup</string>
+    <string name="life_clock_no_recovery_copy">No recovery copy has been saved yet.</string>
+</resources>

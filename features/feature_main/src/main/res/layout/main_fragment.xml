@@ -12,6 +12,11 @@
         android:layout_height="wrap_content"
         app:layout_constraintTop_toTopOf="parent"
         app:tabIndicatorColor="?appTabSelectedColor"
+        app:tabIndicatorFullWidth="false"
+        app:tabIndicatorHeight="0dp"
+        android:background="?appCardBackgroundColor"
+        app:tabTextColor="?appTabUnselectedColor"
+        app:tabSelectedTextColor="?appTabSelectedColor"
         app:tabRippleColor="@color/tab_ripple" />
 
     <View

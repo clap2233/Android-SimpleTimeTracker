@@ -1,6 +1,7 @@
 package com.example.util.simpletimetracker.feature_running_records.view
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
@@ -22,7 +23,6 @@ import com.example.util.simpletimetracker.feature_base_adapter.activityFilter.cr
 import com.example.util.simpletimetracker.feature_base_adapter.activityFilter.createActivityFilterAddAdapterDelegate
 import com.example.util.simpletimetracker.feature_base_adapter.commentField.createCommentFieldAdapterDelegate
 import com.example.util.simpletimetracker.feature_base_adapter.divider.createDividerAdapterDelegate
-import com.example.util.simpletimetracker.feature_base_adapter.empty.createEmptyAdapterDelegate
 import com.example.util.simpletimetracker.feature_base_adapter.emptySpace.createEmptySpaceAdapterDelegate
 import com.example.util.simpletimetracker.feature_base_adapter.hint.createHintAdapterDelegate
 import com.example.util.simpletimetracker.feature_base_adapter.hintBig.createHintBigAdapterDelegate
@@ -33,6 +33,7 @@ import com.example.util.simpletimetracker.feature_base_adapter.recordTypeSpecial
 import com.example.util.simpletimetracker.feature_base_adapter.recordTypeSuggestion.createRecordTypeSuggestionAdapterDelegate
 import com.example.util.simpletimetracker.feature_base_adapter.recordWithHint.createRecordWithHintAdapterDelegate
 import com.example.util.simpletimetracker.feature_base_adapter.runningRecord.createRunningRecordAdapterDelegate
+import com.example.util.simpletimetracker.feature_base_adapter.runningRecord.RunningRecordViewData
 import com.example.util.simpletimetracker.feature_running_records.viewModel.RunningRecordsViewModel
 import com.example.util.simpletimetracker.feature_views.TransitionNames
 import com.example.util.simpletimetracker.feature_views.extension.addOnScrollListenerAdapter
@@ -71,7 +72,7 @@ class RunningRecordsFragment :
         BaseRecyclerAdapter(
             createEmptySpaceAdapterDelegate(),
             createLoaderAdapterDelegate(),
-            createEmptyAdapterDelegate(),
+            createNowEmptyAdapterDelegate(),
             createHintAdapterDelegate(),
             createHintBigAdapterDelegate(),
             createDividerAdapterDelegate(),
@@ -79,14 +80,19 @@ class RunningRecordsFragment :
                 transitionNamePrefix = TransitionNames.RUNNING_RECORD_FROM_MAIN,
                 onItemClick = viewModel::onRunningRecordClick,
                 onItemLongClick = viewModel::onRunningRecordLongClick,
+                onStop = viewModel::stopFromButton,
+                onEdit = viewModel::editFromButton,
+                softAppearance = true,
             ),
             createRecordTypeAdapterDelegate(
                 onItemClickWithData = viewModel::onRecordTypeClick,
                 onItemLongClick = viewModel::onRecordTypeLongClick,
                 withTransition = true,
+                softAppearance = true,
             ),
             createRecordTypeSuggestionAdapterDelegate(
                 type = RecordTypeSuggestionType,
+                softAppearance = true,
                 onItemClickWithData = viewModel::onRecordTypeClick,
                 onItemLongClick = viewModel::onRecordTypeLongClick,
             ),
@@ -99,6 +105,7 @@ class RunningRecordsFragment :
                 onLongClickWithTransition = throttle(viewModel::onShortcutLongClick),
                 onSpinnerPositionSelected = viewModel::onShortcutSpinnerPositionSelected,
                 onButtonClicked = viewModel::onShortcutButtonClick,
+                softAppearance = true,
             ),
             createRunningRecordTypeSpecialAdapterDelegate(
                 onItemClick = throttle(viewModel::onSpecialRecordTypeClick),
@@ -118,6 +125,14 @@ class RunningRecordsFragment :
 
     override fun initUi(): Unit = with(binding) {
         parentFragment?.postponeEnterTransition()
+
+        if (resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale > 1.3f) {
+            nowTitle.textSize = 20f
+            nowSubtitle.visibility = View.GONE
+            val size = (56 * resources.displayMetrics.density).toInt()
+            nowCat.layoutParams.width = size
+            nowCat.layoutParams.height = size
+        }
 
         rvRunningRecordsList.apply {
             layoutManager = FlexboxLayoutManager(requireContext()).apply {
@@ -149,7 +164,7 @@ class RunningRecordsFragment :
         // Solution 2. Delay adapter update while scrolling, update after, keep setHasFixedSize(false).
         rvRunningRecordsList.addOnScrollListenerAdapter { _, newState ->
             if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                pendingRunningRecords?.let(runningRecordsAdapter::replace)
+                pendingRunningRecords?.let(::onRunningRecordsUpdate)
                 pendingRunningRecords = null
             }
         }
@@ -191,7 +206,15 @@ class RunningRecordsFragment :
 
     private fun onRunningRecordsUpdate(items: List<ViewHolderType>) {
         if (binding.rvRunningRecordsList.scrollState == RecyclerView.SCROLL_STATE_IDLE) {
-            runningRecordsAdapter.replace(items)
+            val previous = runningRecordsAdapter.currentList.filterIsInstance<RunningRecordViewData>()
+                .map { it.id to it.timeStartedTimestamp }
+            val current = items.filterIsInstance<RunningRecordViewData>()
+                .map { it.id to it.timeStartedTimestamp }
+            runningRecordsAdapter.submitList(items) {
+                if (current.isNotEmpty() && current != previous) {
+                    binding.rvRunningRecordsList.scrollToPosition(0)
+                }
+            }
         } else {
             pendingRunningRecords = items
         }

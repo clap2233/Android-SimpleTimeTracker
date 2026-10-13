@@ -27,11 +27,7 @@ class RecordShortcutInteractor @Inject constructor(
     }
 
     suspend fun add(recordShortcut: RecordShortcut) {
-        val addedId = repo.add(recordShortcut)
-        when (val target = recordShortcut.target) {
-            is RecordShortcut.Target.Record -> updateTags(addedId, target.tags)
-            is RecordShortcut.Target.Setting -> Unit
-        }
+        repo.add(recordShortcut)
     }
 
     suspend fun update(recordShortcut: RecordShortcut) {

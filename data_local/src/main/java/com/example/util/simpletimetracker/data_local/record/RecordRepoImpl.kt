@@ -8,6 +8,7 @@ import com.example.util.simpletimetracker.domain.record.model.Record
 import com.example.util.simpletimetracker.domain.record.repo.RecordRepo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -235,6 +236,10 @@ class RecordRepoImpl @Inject constructor(
         getFromRangeByTypeCache.evictAll()
         recordCache.evictAll()
         isEmpty = null
+    }
+
+    override suspend fun invalidateCache() {
+        mutex.withLock { clearCache() }
     }
 
     private fun mapItem(

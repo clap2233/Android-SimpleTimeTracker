@@ -17,6 +17,7 @@ android {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":feature_statistics"))
     implementation(project(":feature_records:api"))
     implementation(project(":feature_date_selection:api"))
     implementation(project(":feature_dialogs:api"))

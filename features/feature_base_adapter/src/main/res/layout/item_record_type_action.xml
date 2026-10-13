@@ -1,0 +1,4 @@
+<com.google.android.material.button.MaterialButton xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/LifeClockUi2Button"
+    android:id="@+id/viewRecordTypeItem" android:layout_width="wrap_content" android:layout_height="wrap_content"
+    android:layout_marginStart="4dp" android:layout_marginEnd="4dp" android:layout_marginTop="8dp" android:minHeight="48dp" />

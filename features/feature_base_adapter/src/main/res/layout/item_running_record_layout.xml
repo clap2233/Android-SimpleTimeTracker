@@ -1,11 +1,10 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingStart="8dp" android:paddingEnd="8dp">
 <com.example.util.simpletimetracker.feature_views.RunningRecordView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/viewRunningRecordItem"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="4dp"
-    android:layout_marginEnd="4dp"
     app:cardElevation="@dimen/record_type_card_elevation"
     app:itemTagColor="@color/white_alpha_60"
     tools:itemColor="@color/red_800"
@@ -15,3 +14,9 @@
     tools:itemTagName="Tag"
     tools:itemTimeStarted="11:58"
     tools:itemTimer="07:35" />
+
+    <LinearLayout android:id="@+id/runningActions" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:visibility="gone">
+        <com.google.android.material.button.MaterialButton android:id="@+id/runningEdit" style="@style/LifeClockUi2Button" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginEnd="4dp" android:text="编辑经历" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/runningStop" style="@style/LifeClockUi2PrimaryButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="4dp" android:text="停止计时" />
+    </LinearLayout>
+</LinearLayout>

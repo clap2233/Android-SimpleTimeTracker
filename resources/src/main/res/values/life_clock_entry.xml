@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="life_clock_happiness_entry">Rate happiness</string>
+    <string name="life_clock_meaning_entry">Rate meaning</string>
+    <string name="life_clock_happiness_entry_value">Happiness\n%1$s</string>
+    <string name="life_clock_meaning_entry_value">Meaning\n%1$s</string>
+    <string name="life_clock_unrated">Not rated</string>
+    <string name="life_clock_photo_entry">Photos\nAdd or view</string>
+    <string name="life_clock_more_details_entry">Summary · People · Environment</string>
+    <string name="life_clock_entry_optional">Optional. Save the record to apply changes.</string>
+</resources>

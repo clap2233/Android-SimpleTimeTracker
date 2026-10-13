@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="life_clock_data_restoring">正在恢复备份，请完成后再操作。</string>
+    <string name="life_clock_full_backup">完整备份与恢复（含照片）</string>
+    <string name="life_clock_export_full">备份全部记录和照片（ZIP）</string>
+    <string name="life_clock_restore_full">从完整备份恢复</string>
+    <string name="life_clock_recovery_copy">导出恢复前的副本</string>
+    <string name="life_clock_export_full_csv">导出完整记录 CSV</string>
+    <string name="life_clock_export_full_ics">导出完整记录日历（ICS）</string>
+    <string name="life_clock_legacy_backup">旧格式备份（不含照片）</string>
+    <string name="life_clock_backup_done">完整备份已保存。</string>
+    <string name="life_clock_restore_done">恢复完成。进行中的记录已截止到备份时刻。</string>
+    <string name="life_clock_backup_invalid">备份格式无效或内容不完整，当前数据未被替换。</string>
+    <string name="life_clock_backup_unsupported">此备份需要使用更新版本的应用恢复。</string>
+    <string name="life_clock_backup_media">备份照片缺失或损坏，当前数据未被替换。</string>
+    <string name="life_clock_backup_space">剩余空间不足，无法完成此操作。</string>
+    <string name="life_clock_backup_io">操作未能完成，请检查文件访问权限和剩余空间。</string>
+    <string name="life_clock_backup_busy">正在处理另一项备份操作，请稍后再试。</string>
+    <string name="life_clock_backup_progress">正在处理，请稍候……</string>
+    <string name="life_clock_restore_preview">备份时间：%1$s\n记录：%2$d 条\n进行中：%3$d 条\n照片：%4$d 张\n周回顾：%5$d 份\n待修复区间：%6$d 条\n\n恢复将整体替换当前数据，操作前会自动保存完整副本。进行中的记录仅保留到备份时刻，评分与照片归于该记录；零时长记录保留为待修复，不会自动继续计时。</string>
+    <string name="life_clock_restore_apply">恢复这份备份</string>
+    <string name="life_clock_no_recovery_copy">还没有保存恢复前副本。</string>
+</resources>

@@ -61,7 +61,7 @@ class LifeClockMigrationTest {
         val runningBefore = connection.rows("SELECT * FROM runningRecords")
         val tagDefinitionsBefore = connection.rows("SELECT * FROM recordTags")
 
-        migrate(connection, 34)
+        migrate(connection, 34, 35)
 
         assertEquals(recordsBefore, connection.rows("SELECT id, type_id, time_started, time_ended, comment, tag_id FROM records ORDER BY id"))
         assertEquals(tagsBefore, connection.rows("SELECT record_id, record_tag_id, record_tag_numeric_value FROM recordToRecordTag ORDER BY record_id"))
@@ -87,20 +87,62 @@ class LifeClockMigrationTest {
             future, future + 900_000,
         )
 
-        migrate(connection, 34)
+        migrate(connection, 34, 35)
 
         assertEquals(listOf(listOf(0)), connection.rows("SELECT review_state FROM records"))
     }
 
     @Test
+    fun migrationTo36PreservesRecordsPhotosTagsAndShortcuts() = withDatabase(35) { connection ->
+        connection.execute("INSERT INTO records (id, type_id, time_started, time_ended, comment, tag_id, summary, zone_id, template_id, review_state) VALUES (9, 2, 123, 900123, 'notes', 0, 'reading', 'Asia/Shanghai', 5, 1)")
+        connection.execute("INSERT INTO recordShortcuts (id, type_id, comment, target_type, setting_action) VALUES (5, 2, 'tea first', 0, 0)")
+        connection.execute("INSERT INTO recordPhotos (record_id, relative_path, sha256, position) VALUES (9, 'photos/a.jpg', ?, 0)", "a".repeat(64))
+        connection.execute("INSERT INTO recordToRecordTag (record_id, record_tag_id, record_tag_numeric_value, rated_at) VALUES (9, 8, 4, 900124)")
+        val records = connection.rows("SELECT * FROM records")
+        val photos = connection.rows("SELECT * FROM recordPhotos")
+        val tags = connection.rows("SELECT * FROM recordToRecordTag")
+        val shortcuts = connection.rows("SELECT * FROM recordShortcuts")
+
+        migrate(connection, 35)
+
+        assertEquals(records, connection.rows("SELECT * FROM records"))
+        assertEquals(photos, connection.rows("SELECT * FROM recordPhotos"))
+        assertEquals(tags, connection.rows("SELECT * FROM recordToRecordTag"))
+        assertEquals(shortcuts, connection.rows("SELECT id, type_id, comment, target_type, setting_action FROM recordShortcuts"))
+        assertEquals(listOf(listOf("", "")), connection.rows("SELECT name, summary FROM recordShortcuts"))
+        assertEquals(emptyList<List<Any?>>(), connection.rows("SELECT * FROM lifeClockSettings"))
+        assertSchemaMatches(connection, 36)
+    }
+
+    @Test
+    fun reviewReferencesKeepTextWhenTheirSourceIsDeleted() = withDatabase(35) { connection ->
+        migrate(connection, 35)
+        connection.execute("INSERT INTO records (id, type_id, time_started, time_ended, comment, tag_id) VALUES (9, 2, 123, 900123, '', 0)")
+        connection.execute("INSERT INTO recordShortcuts (id, type_id, comment, target_type, setting_action) VALUES (5, 2, '', 0, 0)")
+        val reviewText = "{\"keep\":{\"text\":\"keep reading\",\"recordId\":9},\"pinnedTemplateIds\":[5]}"
+        val trialText = "{\"description\":\"try reading in the morning\",\"source\":{\"recordId\":9}}"
+        connection.execute("INSERT INTO weeklyReviews (id, week_start, zone_id, content_json) VALUES (1, '2026-10-05', 'Asia/Shanghai', ?)", reviewText)
+        connection.execute("INSERT INTO reviewTrials (id, review_id, content_json) VALUES (2, 1, ?)", trialText)
+        assertThrows(SQLException::class.java) {
+            connection.execute("INSERT INTO weeklyReviews (week_start, zone_id, content_json) VALUES ('2026-10-05', 'Asia/Shanghai', '{}')")
+        }
+
+        connection.execute("DELETE FROM records WHERE id = 9")
+        connection.execute("DELETE FROM recordShortcuts WHERE id = 5")
+        assertEquals(listOf(listOf(reviewText)), connection.rows("SELECT content_json FROM weeklyReviews"))
+        connection.execute("DELETE FROM weeklyReviews WHERE id = 1")
+        assertEquals(listOf(listOf(null, trialText)), connection.rows("SELECT review_id, content_json FROM reviewTrials"))
+    }
+
+    @Test
     fun fullMigrationChainMatchesCurrentRoomSchema() = withDatabase(6) { connection ->
         migrate(connection, 6)
-        assertSchemaMatches(connection, 35)
+        assertSchemaMatches(connection, 36)
     }
 
     @Test
     fun photoForeignKeysPreventOrphansAndDeleteOnlyTheirOwnersPhotos() = withDatabase(34) { connection ->
-        migrate(connection, 34)
+        migrate(connection, 34, 35)
         connection.execute("INSERT INTO records (id, type_id, time_started, time_ended, comment, tag_id) VALUES (1, 2, 0, 900000, '', 0)")
         connection.execute("INSERT INTO runningRecords (id, time_started, comment, tag_id) VALUES (2, 900000, '', 0)")
         val sql = "INSERT INTO recordPhotos (record_id, running_record_id, relative_path, sha256, position) VALUES (?, ?, 'photos/a.jpg', ?, 0)"
@@ -128,7 +170,15 @@ class LifeClockMigrationTest {
         }
     }
 
-    private fun migrate(connection: Connection, fromVersion: Int) {
+    @Test
+    fun migrationTo37AddsOnlyTheRestoreCommitMarker() = withDatabase(36) { connection ->
+        connection.execute("INSERT INTO lifeClockSettings (id, data_set_id, happiness_tag_id, meaning_tag_id) VALUES (1, 'dataset', 7, 8)")
+        migrate(connection, 36, 37)
+        assertEquals(listOf(listOf(1, "dataset", 7, 8, null)), connection.rows("SELECT * FROM lifeClockSettings"))
+        assertSchemaMatches(connection, 37)
+    }
+
+    private fun migrate(connection: Connection, fromVersion: Int, toVersion: Int = 36) {
         val database = mock<SupportSQLiteDatabase>()
         doAnswer {
             connection.execute(it.getArgument<String>(0))
@@ -138,7 +188,8 @@ class LifeClockMigrationTest {
             connection.execute(it.getArgument<String>(0), *it.getArgument<Array<Any?>>(1))
             null
         }.whenever(database).execSQL(any<String>(), any<Array<Any?>>())
-        AppDatabaseMigrations.migrations.filter { it.startVersion >= fromVersion }.forEach { it.migrate(database) }
+        AppDatabaseMigrations.migrations.filter { it.startVersion >= fromVersion && it.endVersion <= toVersion }
+            .forEach { it.migrate(database) }
     }
 
     private fun assertSchemaMatches(connection: Connection, version: Int) {

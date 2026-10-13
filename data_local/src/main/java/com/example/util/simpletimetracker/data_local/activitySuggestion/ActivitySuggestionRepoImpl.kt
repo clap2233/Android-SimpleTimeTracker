@@ -5,6 +5,7 @@ import com.example.util.simpletimetracker.domain.activitySuggestion.model.Activi
 import com.example.util.simpletimetracker.domain.activitySuggestion.repo.ActivitySuggestionRepo
 import com.example.util.simpletimetracker.domain.extension.removeIf
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -53,4 +54,7 @@ class ActivitySuggestionRepoImpl @Inject constructor(
         accessSource = { dao.clear() },
         afterSourceAccess = { cache = null },
     )
+    suspend fun invalidateCache() {
+        mutex.withLock { cache = null }
+    }
 }

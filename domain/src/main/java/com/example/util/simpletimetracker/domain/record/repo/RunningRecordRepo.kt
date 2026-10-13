@@ -17,4 +17,6 @@ interface RunningRecordRepo {
     suspend fun remove(id: Long)
 
     suspend fun clear()
+
+    suspend fun invalidateCache()
 }

@@ -17,15 +17,17 @@ class ShouldShowRecordDataSelectionInteractor @Inject constructor(
     private val recordTagInteractor: RecordTagInteractor,
     private val currentTimestampProvider: CurrentTimestampProvider,
     private val processRulesInteractor: ProcessRulesInteractor,
+    private val settingsRepo: com.example.util.simpletimetracker.domain.lifeClock.repo.LifeClockSettingsRepo,
 ) {
 
     suspend fun execute(
         typeId: Long,
         commentInputAvailable: Boolean,
     ): RecordDataSelectionDialogResult {
+        val ratingIds = settingsRepo.getOrCreate().ratingTagIds
         val fields = mutableSetOf<RecordDataSelectionDialogResult.Field>()
 
-        if (needToShowTags(typeId)) {
+        if (needToShowTags(typeId, ratingIds)) {
             fields += RecordDataSelectionDialogResult.Field.Tags
         }
         if (needToShowComment(typeId, commentInputAvailable)) {
@@ -40,7 +42,7 @@ class ShouldShowRecordDataSelectionInteractor @Inject constructor(
             retroactiveTrackingMode = prefsInteractor.getRetroactiveTrackingMode(),
         )
         val requiredValueSelectionTagIds = filterNumericTagValueSelectionTagIds(
-            tagIds = rulesResult.tagIdsToSelectValueOnStart,
+            tagIds = rulesResult.tagIdsToSelectValueOnStart - ratingIds,
         )
         if (requiredValueSelectionTagIds.isNotEmpty()) {
             // Force tag selection dialog if any tags need value.
@@ -54,12 +56,12 @@ class ShouldShowRecordDataSelectionInteractor @Inject constructor(
 
         return RecordDataSelectionDialogResult(
             fields = fields.toList(),
-            preselectedTags = allTags,
+            preselectedTags = allTags.filterNot { it.tagId in ratingIds },
             requiredValueSelectionTagIds = requiredValueSelectionTagIds,
         )
     }
 
-    private suspend fun needToShowTags(typeId: Long): Boolean {
+    private suspend fun needToShowTags(typeId: Long, ratingIds: Set<Long>): Boolean {
         if (!prefsInteractor.getShowRecordTagSelection()) return false
 
         val excludedActivities = prefsInteractor.getRecordTagSelectionExcludeActivities()
@@ -68,7 +70,7 @@ class ShouldShowRecordDataSelectionInteractor @Inject constructor(
         return if (typeId !in excludedActivities) {
             // Check if activity has tags.
             val assignableTags = getSelectableTagsInteractor.execute(typeId)
-                .filterNot { it.archived }
+                .filterNot { it.archived || it.id in ratingIds }
             assignableTags.isNotEmpty()
         } else {
             false

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="life_clock_details">Experience details</string>
+    <string name="life_clock_detail_optional">Optional. Changes are applied when you save the record.</string>
+    <string name="life_clock_summary">Summary</string>
+    <string name="life_clock_people">People</string>
+    <string name="life_clock_environment">Environment</string>
+    <string name="life_clock_happiness">Happiness (1–5)</string>
+    <string name="life_clock_meaning">Meaning (1–5)</string>
+    <string name="life_clock_empty">Empty</string>
+    <string name="life_clock_add">Add person or environment</string>
+    <string name="life_clock_name_required">Enter a name.</string>
+    <string name="life_clock_photos">Photos</string>
+    <string name="life_clock_photo_count">Photos: %1$d</string>
+    <string name="life_clock_photo_number">Photo %1$d</string>
+    <string name="life_clock_select_photo">Select photos</string>
+    <string name="life_clock_take_photo">Take a photo</string>
+    <string name="life_clock_view_photos">View or remove photos</string>
+    <string name="life_clock_remove_photo">Remove from record</string>
+    <string name="life_clock_no_photos">No photos yet.</string>
+    <string name="life_clock_photo_missing">This photo cannot be read.</string>
+    <string name="life_clock_photo_import_failed">Could not add the photo. Check access and free storage, and select a valid image under 50 MB.</string>
+    <string name="life_clock_photo_busy">Adding photos, please wait before saving.</string>
+    <string name="life_clock_details_save_failed">Could not complete this operation. Check the record before trying again.</string>
+    <string name="life_clock_reserved_rating">Built-in rating tags cannot be deleted. Clear the score in experience details instead.</string>
+</resources>

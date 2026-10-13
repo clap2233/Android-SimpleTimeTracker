@@ -54,6 +54,17 @@ class ChangeRunningRecordFragment :
     lateinit var commentDelegateProvider: CommentSelectionViewDelegateProvider
 
     private val viewModel: ChangeRunningRecordViewModel by viewModels()
+    private val details = com.example.util.simpletimetracker.feature_change_record.view.RecordDetailsController(this) { viewModel }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        details.restoreState(savedInstanceState)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        details.saveState(outState)
+    }
 
     private var typeColorAnimator: ValueAnimator? = null
     private val core by lazy { ChangeRecordCore(viewModel, commentDelegateProvider) }
@@ -85,6 +96,7 @@ class ChangeRunningRecordFragment :
     }
 
     override fun initViewModel() = with(binding) {
+        details.bind(layoutChangeRunningRecordCore.lifeClockExperienceEntry)
         with(viewModel) {
             extra = params
             record.observe(::updatePreview)
@@ -170,10 +182,11 @@ class ChangeRunningRecordFragment :
 
         if (item.recordPreview == null) return
         with(binding.previewChangeRunningRecord) {
+            val compact = resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale > 1.3f
             itemName = item.recordPreview.name
-            itemTagName = item.recordPreview.tagName
+            itemTagName = if (compact) "" else item.recordPreview.tagName
             itemIcon = item.recordPreview.iconId
-            itemTimeStarted = item.recordPreview.timeStarted
+            itemTimeStarted = if (compact) "" else item.recordPreview.timeStarted
             itemTimer = item.recordPreview.timer
             itemTimerTotal = item.recordPreview.timerTotal
             itemGoalTime = item.recordPreview.goalTime.text
@@ -182,7 +195,7 @@ class ChangeRunningRecordFragment :
                 is Subtype.Goal -> CheckState.GOAL_REACHED
                 is Subtype.Limit -> CheckState.LIMIT_REACHED
             }
-            itemComment = item.recordPreview.comment
+            itemComment = if (compact) "" else item.recordPreview.comment
             itemNowIconVisible = item.recordPreview.nowIconVisible
 
             if (animated) {

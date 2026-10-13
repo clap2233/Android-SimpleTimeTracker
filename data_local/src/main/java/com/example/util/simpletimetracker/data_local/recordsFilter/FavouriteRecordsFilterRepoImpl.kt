@@ -4,6 +4,7 @@ import com.example.util.simpletimetracker.data_local.base.withLockedCache
 import com.example.util.simpletimetracker.domain.record.model.FavouriteRecordsFilter
 import com.example.util.simpletimetracker.domain.recordsFilter.repo.FavouriteRecordsFilterRepo
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -56,5 +57,8 @@ class FavouriteRecordsFilterRepoImpl @Inject constructor(
         dbo: FavouriteRecordsFilterDBO,
     ): FavouriteRecordsFilter? {
         return mapper.map(dbo)
+    }
+    suspend fun invalidateCache() {
+        mutex.withLock { cache.clear() }
     }
 }

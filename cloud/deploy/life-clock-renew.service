@@ -1,0 +1,8 @@
+[Unit]
+Description=Renew Life Clock IP TLS certificate
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/life-clock/certbot/bin/certbot renew --cert-name 124.221.50.129 --quiet --deploy-hook "/usr/sbin/nginx -t && /usr/bin/systemctl reload nginx"

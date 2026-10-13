@@ -1,70 +1,46 @@
 package com.example.util.simpletimetracker.domain.record.interactor
 
 import com.example.util.simpletimetracker.domain.base.CurrentTimestampProvider
-import com.example.util.simpletimetracker.domain.base.SuspendLazy
 import com.example.util.simpletimetracker.domain.base.suspendLazy
 import com.example.util.simpletimetracker.domain.notifications.interactor.ActivityStartedStoppedBroadcastInteractor
-import com.example.util.simpletimetracker.domain.notifications.interactor.NotificationGoalCountInteractor
 import com.example.util.simpletimetracker.domain.notifications.interactor.UpdateExternalViewsInteractor
-import com.example.util.simpletimetracker.domain.pomodoro.interactor.PomodoroStartInteractor
-import com.example.util.simpletimetracker.domain.prefs.interactor.PrefsInteractor
-import com.example.util.simpletimetracker.domain.record.model.Record
 import com.example.util.simpletimetracker.domain.record.model.RecordBase
 import com.example.util.simpletimetracker.domain.record.model.RecordDataSelectionDialogResult
-import com.example.util.simpletimetracker.domain.record.model.RecordReviewState
+import com.example.util.simpletimetracker.domain.record.model.RecordMutationException
 import com.example.util.simpletimetracker.domain.record.model.RunningRecord
-import com.example.util.simpletimetracker.domain.recordType.interactor.RecordTypeInteractor
-import com.example.util.simpletimetracker.domain.recordType.model.RecordType
-import java.util.concurrent.TimeUnit
+import com.example.util.simpletimetracker.domain.record.repo.RecordMutationFeedback
+import com.example.util.simpletimetracker.domain.record.repo.RecordMutationRepo
 import javax.inject.Inject
 
 class AddRunningRecordMediator @Inject constructor(
-    private val prefsInteractor: PrefsInteractor,
-    private val removeRunningRecordMediator: RemoveRunningRecordMediator,
-    private val recordInteractor: RecordInteractor,
+    private val mutations: RecordMutationRepo,
+    private val feedback: RecordMutationFeedback,
     private val runningRecordInteractor: RunningRecordInteractor,
-    private val recordTypeInteractor: RecordTypeInteractor,
-    private val addRecordMediator: AddRecordMediator,
-    private val notificationGoalCountInteractor: NotificationGoalCountInteractor,
+    private val recordInteractor: RecordInteractor,
     private val activityStartedStoppedBroadcastInteractor: ActivityStartedStoppedBroadcastInteractor,
     private val shouldShowRecordDataSelectionInteractor: ShouldShowRecordDataSelectionInteractor,
-    private val pomodoroStartInteractor: PomodoroStartInteractor,
     private val processRulesInteractor: ProcessRulesInteractor,
     private val updateExternalViewsInteractor: UpdateExternalViewsInteractor,
     private val currentTimestampProvider: CurrentTimestampProvider,
+    private val restoreGate: com.example.util.simpletimetracker.domain.backup.interactor.DataRestoreGate = com.example.util.simpletimetracker.domain.backup.interactor.DataRestoreGate(),
 ) {
-
-    /**
-     * Returns true if activity was started.
-     */
     suspend fun tryStartTimer(
         typeId: Long,
         updateNotificationSwitch: Boolean = true,
         commentInputAvailable: Boolean = true,
         onNeedToShowTagSelection: suspend (RecordDataSelectionDialogResult) -> Unit,
     ): Boolean {
-        // Already running
         if (runningRecordInteractor.get(typeId) != null) return false
-
-        val shouldShowTagSelectionResult = shouldShowRecordDataSelectionInteractor.execute(
-            typeId = typeId,
-            commentInputAvailable = commentInputAvailable,
-        )
-
-        return if (shouldShowTagSelectionResult.fields.isNotEmpty()) {
-            onNeedToShowTagSelection(shouldShowTagSelectionResult)
+        val selection = shouldShowRecordDataSelectionInteractor.execute(typeId, commentInputAvailable)
+        return if (selection.fields.isNotEmpty()) {
+            onNeedToShowTagSelection(selection)
             false
         } else {
-            startTimer(
-                typeId = typeId,
-                tags = emptyList(),
-                comment = "",
-                updateNotificationSwitch = updateNotificationSwitch,
-            )
-            true
+            startTimer(typeId, emptyList(), "", updateNotificationSwitch = updateNotificationSwitch)
         }
     }
 
+    @Suppress("UNUSED_PARAMETER")
     suspend fun startTimer(
         typeId: Long,
         tags: List<RecordBase.Tag>,
@@ -73,281 +49,62 @@ class AddRunningRecordMediator @Inject constructor(
         updateNotificationSwitch: Boolean = true,
         checkDefaultDuration: Boolean = true,
         useSelectedTags: Boolean = false,
-    ) {
-        val currentTime = currentTimestampProvider.get()
-        val actualTimeStarted = when (timeStarted) {
+        summary: String = "",
+        templateId: Long? = null,
+    ): Boolean {
+        val now = currentTimestampProvider.get()
+        val writeToken = restoreGate.token()
+        val start = when (timeStarted) {
             is StartTime.Current -> timeStarted.currentTimeStampMs
-            is StartTime.TakeCurrent -> currentTime
+            is StartTime.TakeCurrent -> now
             is StartTime.Timestamp -> timeStarted.timestampMs
-        }.coerceAtMost(currentTime)
-        val retroactiveTrackingMode = prefsInteractor.getRetroactiveTrackingMode()
-        val actualPrevRecords = suspendLazy {
-            recordInteractor.getAllPrev(actualTimeStarted)
         }
-        val rulesResult = processRulesInteractor.getRulesResultForStart(
-            typeId = typeId,
-            timeStarted = actualTimeStarted,
-            prevRecords = actualPrevRecords,
-            retroactiveTrackingMode = retroactiveTrackingMode,
+        val rules = processRulesInteractor.getRulesResultForStart(
+            typeId = typeId, timeStarted = start,
+            prevRecords = suspendLazy { recordInteractor.getAllPrev(start) }, retroactiveTrackingMode = false,
         )
-        val isMultitaskingAllowedByDefault = prefsInteractor.getAllowMultitasking()
-        val isMultitaskingAllowed = rulesResult.isMultitaskingAllowed.getValueOrNull()
-            ?: isMultitaskingAllowedByDefault
-        processMultitasking(
-            typeId = typeId,
-            isMultitaskingAllowed = isMultitaskingAllowed,
-            disallowOnlyPreviousTypeIds = rulesResult.disallowOnlyPreviousTypeIds,
-            splitTime = when (timeStarted) {
-                is StartTime.Current -> timeStarted.currentTimeStampMs
-                is StartTime.TakeCurrent -> currentTime
-                is StartTime.Timestamp -> currentTime
-            },
-        )
-        val actualTags = if (useSelectedTags) {
-            tags
-        } else {
-            processRulesInteractor.getAllTags(
-                typeId = typeId,
-                currentTags = tags,
-                tagValuesFromRules = rulesResult.tags,
-            )
+        val selected = if (useSelectedTags) tags else processRulesInteractor.getAllTags(typeId, tags, rules.tags)
+        val record = RunningRecord(typeId, start, comment, selected, summary = summary, templateId = templateId)
+        if (!restoreGate.canWrite(writeToken)) {
+            feedback.show(com.example.util.simpletimetracker.domain.record.model.RecordMutationError.DATA_RESTORING)
+            return false
         }
-        activityStartedStoppedBroadcastInteractor.onActionActivityStarted(
-            typeId = typeId,
-            tagIds = actualTags.map { it.tagId },
-            comment = comment,
-        )
-        val startParams = StartParams(
-            typeId = typeId,
-            comment = comment,
-            tags = actualTags,
-            timeStarted = actualTimeStarted,
-            updateNotificationSwitch = updateNotificationSwitch,
-            isMultitaskingAllowed = isMultitaskingAllowed,
-        )
-        if (retroactiveTrackingMode) {
-            addRetroactiveModeInternal(startParams, actualPrevRecords)
-        } else {
-            addInternal(startParams, checkDefaultDuration)
-        }
-        // Show goal count only on timer start, otherwise it would show on change also.
-        notificationGoalCountInteractor.checkAndShow(typeId)
-        if (!retroactiveTrackingMode) {
-            pomodoroStartInteractor.checkAndStart(typeId)
+        return try {
+            val change = mutations.start(record, now)
+            val started = change.started ?: return false
+            change.stopped.forEach {
+                activityStartedStoppedBroadcastInteractor.onActivityStopped(it.id, it.tags.map(RecordBase.Tag::tagId), it.comment, it.timeStarted)
+                updateExternalViewsInteractor.onRunningRecordRemove(it.id, it.tags.map(RecordBase.Tag::tagId), updateWidgets = false, updateNotificationSwitch = false)
+            }
+            activityStartedStoppedBroadcastInteractor.onActionActivityStarted(typeId, started.tags.map(RecordBase.Tag::tagId), comment)
+            updateExternalViewsInteractor.onRunningRecordAdd(typeId, started.tags.map(RecordBase.Tag::tagId), updateNotificationSwitch)
+            true
+        } catch (error: RecordMutationException) {
+            feedback.show(error.reason)
+            false
         }
     }
 
-    // Used separately only for changing running activity,
-    // due to some poor (probably) decisions id of running record is it's type id,
-    // so if type is changed - need to remove old and add new data.
     suspend fun addAfterChange(
         typeId: Long,
         timeStarted: Long,
         comment: String,
         tags: List<RecordBase.Tag>,
         sourceRecord: RunningRecord? = null,
-    ) {
-        addInternal(
-            params = StartParams(
-                typeId = typeId,
-                timeStarted = timeStarted,
-                comment = comment,
-                tags = tags,
-                updateNotificationSwitch = true,
-                isMultitaskingAllowed = true,
-                sourceRecord = sourceRecord,
-            ),
-            checkDefaultDuration = false,
-        )
-    }
-
-    private suspend fun addInternal(
-        params: StartParams,
-        checkDefaultDuration: Boolean,
-    ) {
-        val type = recordTypeInteractor.get(params.typeId) ?: return
-        if (type.defaultDuration > 0L && checkDefaultDuration) {
-            addInstantRecord(params, type)
-        } else {
-            addRunningRecord(params)
+        photos: List<com.example.util.simpletimetracker.domain.record.model.RecordPhoto>? = null,
+    ): Boolean {
+        val source = sourceRecord ?: return false
+        return try {
+            val changed = source.copy(id = typeId, timeStarted = timeStarted, comment = comment, tags = tags)
+            if (photos == null) mutations.editRunning(source.id, changed) else mutations.editRunningDetails(source.id, changed, photos)
+            updateExternalViewsInteractor.onRunningRecordRemove(source.id, source.tags.map(RecordBase.Tag::tagId), updateWidgets = false, updateNotificationSwitch = false)
+            updateExternalViewsInteractor.onRunningRecordAdd(typeId, tags.map(RecordBase.Tag::tagId), updateNotificationSwitch = true)
+            true
+        } catch (error: RecordMutationException) {
+            feedback.show(error.reason)
+            false
         }
     }
-
-    private suspend fun addRetroactiveModeInternal(
-        params: StartParams,
-        prevRecords: SuspendLazy<List<Record>>,
-    ) {
-        val type = recordTypeInteractor.get(params.typeId) ?: return
-
-        processRetroactiveMultitasking(
-            params = params,
-            prevRecords = prevRecords,
-        )
-
-        if (type.defaultDuration > 0L) {
-            val newTimeStarted = params.timeStarted - type.defaultDuration * 1000
-            addInstantRecord(
-                params = params.copy(timeStarted = newTimeStarted),
-                type = type,
-            )
-        } else {
-            addRecordRetroactively(
-                params = params,
-                prevRecords = prevRecords,
-            )
-        }
-    }
-
-    private suspend fun addRunningRecord(
-        params: StartParams,
-    ) {
-        if (runningRecordInteractor.get(params.typeId) == null && params.typeId > 0L) {
-            val source = params.sourceRecord ?: RunningRecord(
-                id = params.typeId,
-                timeStarted = params.timeStarted,
-                comment = "",
-                tags = emptyList(),
-            )
-            val data = source.copy(
-                id = params.typeId,
-                timeStarted = params.timeStarted,
-                comment = params.comment,
-                tags = params.tags,
-            )
-
-            runningRecordInteractor.add(data)
-            updateExternalViewsInteractor.onRunningRecordAdd(
-                typeId = params.typeId,
-                tagIds = params.tags.map(RecordBase.Tag::tagId),
-                updateNotificationSwitch = params.updateNotificationSwitch,
-            )
-        }
-    }
-
-    private suspend fun addInstantRecord(
-        params: StartParams,
-        type: RecordType,
-    ) {
-        Record(
-            typeId = params.typeId,
-            timeStarted = params.timeStarted,
-            timeEnded = params.timeStarted + type.defaultDuration * 1000,
-            comment = params.comment,
-            tags = params.tags,
-        ).let {
-            addRecordMediator.add(
-                record = it,
-                updateNotificationSwitch = params.updateNotificationSwitch,
-            )
-        }
-    }
-
-    private suspend fun addRecordRetroactively(
-        params: StartParams,
-        prevRecords: SuspendLazy<List<Record>>,
-    ) {
-        val prevRecord = processRulesInteractor.getPrevRecordToMergeWith(params.typeId, prevRecords)
-        val shouldMerge = prevRecord?.tags.orEmpty().sortedBy { it.tagId } == params.tags.sortedBy { it.tagId }
-
-        val record = if (prevRecord != null && shouldMerge) {
-            prevRecord.copy(
-                typeId = params.typeId,
-                timeStarted = prevRecord.timeStarted,
-                timeEnded = params.timeStarted,
-                comment = params.comment.takeUnless { it.isEmpty() }
-                    ?: prevRecord.comment,
-                tags = params.tags.takeUnless { it.isEmpty() }
-                    ?: prevRecord.tags,
-                reviewState = RecordReviewState.PENDING,
-            )
-        } else {
-            val newTimeStarted = prevRecords().firstOrNull()?.timeEnded
-                ?: (params.timeStarted - TimeUnit.MINUTES.toMillis(5))
-            Record(
-                id = 0L, // Creates new record.
-                typeId = params.typeId,
-                timeStarted = newTimeStarted,
-                timeEnded = params.timeStarted,
-                comment = params.comment,
-                tags = params.tags,
-            )
-        }
-        addRecordMediator.add(
-            record = record,
-            updateNotificationSwitch = params.updateNotificationSwitch,
-        )
-    }
-
-    private suspend fun processMultitasking(
-        typeId: Long,
-        isMultitaskingAllowed: Boolean,
-        disallowOnlyPreviousTypeIds: Set<Long>,
-        splitTime: Long,
-    ) {
-        // Stop running records if multitasking is disabled.
-        if (!isMultitaskingAllowed) {
-            // Widgets will update on adding.
-            val runningRecords = runningRecordInteractor.getAll()
-                .filter { it.id != typeId }
-            val recordsToStop = if (disallowOnlyPreviousTypeIds.isNotEmpty()) {
-                runningRecords.filter { record ->
-                    record.typeIds.any { it in disallowOnlyPreviousTypeIds }
-                }
-            } else {
-                runningRecords
-            }
-            recordsToStop
-                .forEach {
-                    removeRunningRecordMediator.removeWithRecordAdd(
-                        runningRecord = it,
-                        updateWidgets = false,
-                        updateNotificationSwitch = false,
-                        timeEnded = splitTime,
-                    )
-                }
-        }
-    }
-
-    private suspend fun processRetroactiveMultitasking(
-        params: StartParams,
-        prevRecords: SuspendLazy<List<Record>>,
-    ) {
-        if (!params.isMultitaskingAllowed) return
-
-        val recordTypesMap = recordTypeInteractor.getAll().associateBy(RecordType::id)
-        val mergedRecord = processRulesInteractor.getPrevRecordToMergeWith(params.typeId, prevRecords)
-
-        // Extend prev records to current time.
-        prevRecords().filter {
-            // Skip record that would be merge.
-            it.id != mergedRecord?.id
-        }.filter {
-            // Skip records with default duration.
-            val thisType = recordTypesMap[it.typeId]
-            thisType != null && thisType.defaultDuration == 0L
-        }.map { prevRecord ->
-            recordInteractor.updateTimeEnded(
-                recordId = prevRecord.id,
-                timeEnded = params.timeStarted,
-            )
-            prevRecord
-        }.let {
-            updateExternalViewsInteractor.onRecordTimeEndedChange(
-                typeIds = it.map(Record::typeId),
-                tagIds = it.map(Record::tags).flatten().map(RecordBase.Tag::tagId).distinct(),
-            )
-        }
-    }
-
-    private data class StartParams(
-        val typeId: Long,
-        val timeStarted: Long,
-        val comment: String,
-        val tags: List<RecordBase.Tag>,
-        val updateNotificationSwitch: Boolean,
-        val isMultitaskingAllowed: Boolean,
-        val sourceRecord: RunningRecord? = null,
-    )
 
     sealed interface StartTime {
         data class Current(val currentTimeStampMs: Long) : StartTime

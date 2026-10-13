@@ -43,7 +43,37 @@ class AppDatabaseMigrations {
                 migration_32_33,
                 migration_33_34,
                 migration_34_35,
+                migration_35_36,
+                migration_36_37,
             )
+
+        private val migration_36_37 = object : Migration(36, 37) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE lifeClockSettings ADD COLUMN restore_operation_id TEXT DEFAULT NULL")
+            }
+        }
+
+        private val migration_35_36 = object : Migration(35, 36) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE recordShortcuts ADD COLUMN name TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE recordShortcuts ADD COLUMN summary TEXT NOT NULL DEFAULT ''")
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS lifeClockSettings (id INTEGER NOT NULL, data_set_id TEXT NOT NULL, " +
+                        "happiness_tag_id INTEGER NOT NULL, meaning_tag_id INTEGER NOT NULL, PRIMARY KEY(id))",
+                )
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS weeklyReviews (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "week_start TEXT NOT NULL, zone_id TEXT NOT NULL, content_json TEXT NOT NULL)",
+                )
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_weeklyReviews_week_start_zone_id ON weeklyReviews(week_start, zone_id)")
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS reviewTrials (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "review_id INTEGER, content_json TEXT NOT NULL, " +
+                        "FOREIGN KEY(review_id) REFERENCES weeklyReviews(id) ON UPDATE NO ACTION ON DELETE SET NULL)",
+                )
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_reviewTrials_review_id ON reviewTrials(review_id)")
+            }
+        }
 
         private val migration_34_35 = object : Migration(34, 35) {
             override fun migrate(database: SupportSQLiteDatabase) {

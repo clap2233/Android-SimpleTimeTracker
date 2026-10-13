@@ -1,47 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <color name="colorPrimary">#37474f</color>
-    <color name="colorPrimaryVariant">#263238</color>
-    <color name="colorPrimaryDark">#212121</color>
-    <color name="colorSecondary">#FF4081</color>
+    <color name="colorPrimary">#52745B</color>
+    <color name="colorPrimaryVariant">#3F5C47</color>
+    <color name="colorPrimaryDark">#19231C</color>
+    <color name="colorSecondary">#52745B</color>
 
-    <color name="textPrimary">#191919</color>
-    <color name="textPrimaryDark">@color/grey_400</color>
-    <color name="textSecondary">#737373</color>
+    <color name="textPrimary">#344239</color>
+    <color name="textPrimaryDark">#E8E9DE</color>
+    <color name="textSecondary">#697267</color>
 
     <color name="textLight">@color/grey_50</color>
     <color name="textLightDark">@color/grey_100</color>
 
     <color name="textHintCommon">#85FFFFFF</color>
-    <color name="textHint">#A1A1A1</color>
-    <color name="textHintDark">#4D4D4D</color>
+    <color name="textHint">#697267</color>
+    <color name="textHintDark">#B0BBAB</color>
 
-    <color name="colorBackground">@color/white</color>
-    <color name="colorBackgroundDark">@color/grey_950</color>
+    <color name="colorBackground">#F8F6EF</color>
+    <color name="colorBackgroundDark">#1C251F</color>
 
     <color name="colorSplashBackground">@color/colorBackground</color>
 
     <color name="pieChartDivider">#EEEEEE</color>
     <color name="pieChartDividerDark">@color/grey_950</color>
 
-    <color name="cardBackground">@color/white</color>
-    <color name="cardBackgroundDark">@color/grey_900</color>
+    <color name="cardBackground">#FFFEFA</color>
+    <color name="cardBackgroundDark">#29352B</color>
 
     <color name="buttonOnCardBackground">@color/white</color>
     <color name="buttonOnCardBackgroundDark">@color/grey_950</color>
 
-    <color name="colorDialogBackground">@color/white</color>
-    <color name="colorDialogBackgroundDark">@color/grey_900</color>
+    <color name="colorDialogBackground">#FFFEFA</color>
+    <color name="colorDialogBackgroundDark">#29352B</color>
 
-    <color name="colorDivider">@color/blue_grey_50</color>
-    <color name="colorDividerDark">#0DFFFFFF</color>
+    <color name="colorDivider">#E4E6D9</color>
+    <color name="colorDividerDark">#415044</color>
 
-    <color name="colorTabSelected">@color/grey_900</color>
-    <color name="colorTabSelectedDark">@color/grey_200</color>
+    <color name="colorTabSelected">#52745B</color>
+    <color name="colorTabSelectedDark">#CADBBF</color>
 
-    <color name="colorTabUnselected">@color/grey_400</color>
-    <color name="colorTabUnselectedDark">@color/grey_800</color>
+    <color name="colorTabUnselected">#737B70</color>
+    <color name="colorTabUnselectedDark">#A5B09D</color>
 
     <color name="black">#000000</color>
     <color name="white">#ffffff</color>
@@ -60,13 +60,13 @@
     <color name="colorIconFiltered">@color/grey_50</color>
     <color name="colorIconFilteredDark">@color/grey_800</color>
 
-    <color name="colorActive">@color/blue_grey_800</color>
-    <color name="colorActiveGradientEnd">@color/blue_grey_700</color>
-    <color name="colorActiveDark">@color/blue_grey_900</color>
-    <color name="colorActiveGradientEndDark">@color/blue_grey_800</color>
+    <color name="colorActive">#52745B</color>
+    <color name="colorActiveGradientEnd">#52745B</color>
+    <color name="colorActiveDark">#52745B</color>
+    <color name="colorActiveGradientEndDark">#52745B</color>
 
-    <color name="colorInactive">@color/blue_grey_300</color>
-    <color name="colorInactiveDark">@color/blue_grey_700</color>
+    <color name="colorInactive">#697E70</color>
+    <color name="colorInactiveDark">#50695A</color>
 
     <color name="colorLegend">@color/blue_grey_100</color>
     <color name="colorLegendDark">@color/grey_900</color>
@@ -74,8 +74,8 @@
     <color name="colorLegendSecondary">@color/blue_grey_50</color>
     <color name="colorLegendSecondaryDark">@color/grey_925</color>
 
-    <color name="inputFieldBorder">@color/blue_grey_50</color>
-    <color name="inputFieldBorderDark">#12EEEEEE</color>
+    <color name="inputFieldBorder">#E4E6D9</color>
+    <color name="inputFieldBorderDark">#415044</color>
 
     <color name="colorPositive">@color/green_600</color>
     <color name="colorPositiveDark">@color/green_700</color>

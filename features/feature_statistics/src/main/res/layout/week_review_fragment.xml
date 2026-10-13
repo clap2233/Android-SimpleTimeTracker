@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?appBackgroundColor"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/life_clock_ui2_card"
+        android:gravity="center_vertical"
+        android:padding="4dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/reviewPrevious"
+            style="@style/LifeClockUi2ReviewDateButton"
+            android:layout_width="48dp"
+            android:layout_height="wrap_content"
+            android:contentDescription="上一周"
+            android:text="‹"
+            android:textSize="24sp" />
+
+        <TextView
+            android:id="@+id/reviewWeek"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:minHeight="48dp"
+            android:textColor="?appTextPrimaryColor"
+            android:textSize="14sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/reviewNext"
+            style="@style/LifeClockUi2ReviewDateButton"
+            android:layout_width="48dp"
+            android:layout_height="wrap_content"
+            android:contentDescription="下一周"
+            android:text="›"
+            android:textSize="24sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/reviewToday"
+            style="@style/LifeClockUi2ReviewDateButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="52dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:text="本周" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/reviewFilter"
+            style="@style/LifeClockUi2ReviewToolbarButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="人物／环境" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/reviewDecisions"
+            style="@style/LifeClockUi2ReviewToolbarButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="保留／调整" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/reviewStatistics"
+            style="@style/LifeClockUi2ReviewToolbarButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="详细统计" />
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/reviewBusy"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="3dp"
+        android:indeterminate="true"
+        android:visibility="gone" />
+
+    <ScrollView
+        android:id="@+id/reviewScroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:id="@+id/reviewContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="16dp" />
+    </ScrollView>
+
+    <FrameLayout
+        android:id="@+id/reviewOldStatistics"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone" />
+</LinearLayout>

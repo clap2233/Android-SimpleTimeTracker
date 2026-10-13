@@ -2,17 +2,20 @@ package com.example.util.simpletimetracker.domain.record.interactor
 
 import com.example.util.simpletimetracker.domain.notifications.interactor.ActivityStartedStoppedBroadcastInteractor
 import com.example.util.simpletimetracker.domain.pomodoro.interactor.PomodoroStopInteractor
-import com.example.util.simpletimetracker.domain.prefs.interactor.PrefsInteractor
 import com.example.util.simpletimetracker.domain.notifications.interactor.UpdateExternalViewsInteractor
 import com.example.util.simpletimetracker.domain.record.model.RecordBase
 import com.example.util.simpletimetracker.domain.record.model.RunningRecord
-import java.util.concurrent.TimeUnit
+import com.example.util.simpletimetracker.domain.record.repo.RecordMutationRepo
+import com.example.util.simpletimetracker.domain.record.repo.RecordMutationFeedback
+import com.example.util.simpletimetracker.domain.record.model.RecordMutationException
+import com.example.util.simpletimetracker.domain.base.CurrentTimestampProvider
 import javax.inject.Inject
 
 class RemoveRunningRecordMediator @Inject constructor(
-    private val recordInteractor: RecordInteractor,
+    private val mutations: RecordMutationRepo,
+    private val feedback: RecordMutationFeedback,
+    private val clock: CurrentTimestampProvider,
     private val runningRecordInteractor: RunningRecordInteractor,
-    private val prefsInteractor: PrefsInteractor,
     private val activityStartedStoppedBroadcastInteractor: ActivityStartedStoppedBroadcastInteractor,
     private val pomodoroStopInteractor: PomodoroStopInteractor,
     private val updateExternalViewsInteractor: UpdateExternalViewsInteractor,
@@ -24,31 +27,26 @@ class RemoveRunningRecordMediator @Inject constructor(
         updateNotificationSwitch: Boolean = true,
         timeEnded: Long? = null, // null - take current time.
     ) {
-        val recordTimeEnded = timeEnded
-            ?.coerceAtLeast(runningRecord.timeStarted)
-            ?: System.currentTimeMillis()
-        val durationToIgnore = prefsInteractor.getIgnoreShortRecordsDuration()
-        val duration = TimeUnit.MILLISECONDS
-            .toSeconds(recordTimeEnded - runningRecord.timeStarted)
-
-        if (duration > durationToIgnore || durationToIgnore == 0L) {
-            // No need to update widgets and notification because it will be done in running record remove.
-            recordInteractor.addFromRunning(
-                runningRecord = runningRecord,
-                timeEnded = recordTimeEnded,
-            )
+        val change = try {
+            mutations.stop(runningRecord.id, timeEnded ?: clock.get())
+        } catch (error: RecordMutationException) {
+            feedback.show(error.reason)
+            return
         }
+        val stopped = change.stopped.singleOrNull() ?: return
         activityStartedStoppedBroadcastInteractor.onActivityStopped(
-            typeId = runningRecord.id,
-            tagIds = runningRecord.tags.map(RecordBase.Tag::tagId),
-            comment = runningRecord.comment,
-            timeStarted = runningRecord.timeStarted,
+            typeId = stopped.id,
+            tagIds = stopped.tags.map(RecordBase.Tag::tagId),
+            comment = stopped.comment,
+            timeStarted = stopped.timeStarted,
         )
-        remove(
-            typeId = runningRecord.id,
+        updateExternalViewsInteractor.onRunningRecordRemove(
+            typeId = stopped.id,
+            tagIds = stopped.tags.map(RecordBase.Tag::tagId),
             updateWidgets = updateWidgets,
             updateNotificationSwitch = updateNotificationSwitch,
         )
+        pomodoroStopInteractor.checkAndStop(stopped.id)
     }
 
     suspend fun remove(

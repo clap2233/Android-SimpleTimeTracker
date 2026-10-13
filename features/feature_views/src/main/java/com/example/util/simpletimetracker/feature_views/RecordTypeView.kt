@@ -2,6 +2,8 @@ package com.example.util.simpletimetracker.feature_views
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.Gravity
 import android.widget.RelativeLayout
@@ -11,6 +13,8 @@ import androidx.core.view.isVisible
 import com.example.util.simpletimetracker.feature_views.GoalCheckmarkView.CheckState
 import com.example.util.simpletimetracker.feature_views.databinding.RecordTypeViewLayoutBinding
 import com.example.util.simpletimetracker.feature_views.extension.animateAlpha
+import com.example.util.simpletimetracker.feature_views.extension.dpToPx
+import com.example.util.simpletimetracker.feature_views.extension.getThemedAttr
 import com.example.util.simpletimetracker.feature_views.extension.layoutInflater
 import com.example.util.simpletimetracker.feature_views.extension.setMargins
 import com.example.util.simpletimetracker.feature_views.viewData.RecordTypeIcon
@@ -26,6 +30,19 @@ class RecordTypeView @JvmOverloads constructor(
 ) {
 
     private val binding = RecordTypeViewLayoutBinding.inflate(layoutInflater, this)
+
+    var softAppearance: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            updateAppearance()
+        }
+
+    var itemIsActive: Boolean = false
+        set(value) {
+            field = value
+            if (softAppearance) updateAppearance()
+        }
 
     init {
 
@@ -88,8 +105,8 @@ class RecordTypeView @JvmOverloads constructor(
 
     var itemColor: Int = 0
         set(value) {
-            binding.containerRecordTypeItem.setCardBackgroundColor(value)
             field = value
+            updateAppearance()
         }
 
     var itemIcon: RecordTypeIcon = RecordTypeIcon.Image(0)
@@ -100,9 +117,8 @@ class RecordTypeView @JvmOverloads constructor(
 
     var itemIconColor: Int = 0
         set(value) {
-            binding.container.tvRecordTypeItemName.setTextColor(value)
-            binding.container.ivRecordTypeItemIcon.itemIconColor = value
             field = value
+            updateAppearance()
         }
 
     var itemIconAlpha: Float = 1.0f
@@ -137,6 +153,42 @@ class RecordTypeView @JvmOverloads constructor(
 
     fun getCheckmarkOutline(): GoalCheckmarkView {
         return binding.viewRecordTypeItemCheckmark
+    }
+
+    private fun updateAppearance() = with(binding) {
+        val backgroundColor = if (softAppearance) {
+            val attr = if (itemIsActive) R.attr.lifeClockAccentSurfaceColor else R.attr.appCardBackgroundColor
+            context.getThemedAttr(attr)
+        } else {
+            itemColor
+        }
+        containerRecordTypeItem.setCardBackgroundColor(backgroundColor)
+        containerRecordTypeItem.radius = if (softAppearance) {
+            20.dpToPx().toFloat()
+        } else {
+            resources.getDimension(R.dimen.record_type_card_corner_radius)
+        }
+        container.tvRecordTypeItemName.setTextColor(
+            if (softAppearance) context.getThemedAttr(R.attr.appTextPrimaryColor) else itemIconColor,
+        )
+        container.tvRecordTypeItemName.setTypeface(null, if (softAppearance) Typeface.NORMAL else Typeface.BOLD)
+        container.ivRecordTypeItemIcon.apply {
+            background = if (softAppearance) {
+                GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(itemColor)
+                }
+            } else {
+                null
+            }
+            val padding = if (softAppearance) 6.dpToPx() else 0
+            setPadding(padding, padding, padding, padding)
+            itemIconColor = if (softAppearance) {
+                ColorUtils.readableContentColor(this@RecordTypeView.itemColor)
+            } else {
+                this@RecordTypeView.itemIconColor
+            }
+        }
     }
 
     private fun changeConstraints(isRow: Boolean) = with(binding.container) {

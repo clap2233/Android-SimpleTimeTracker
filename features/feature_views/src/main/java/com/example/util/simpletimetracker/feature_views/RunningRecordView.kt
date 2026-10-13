@@ -3,12 +3,16 @@ package com.example.util.simpletimetracker.feature_views
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import androidx.annotation.ColorInt
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import com.example.util.simpletimetracker.feature_views.databinding.RecordRunningViewLayoutBinding
+import com.example.util.simpletimetracker.feature_views.extension.dpToPx
+import com.example.util.simpletimetracker.feature_views.extension.getThemedAttr
 import com.example.util.simpletimetracker.feature_views.extension.layoutInflater
 import com.example.util.simpletimetracker.feature_views.extension.setForegroundSpan
 import com.example.util.simpletimetracker.feature_views.extension.toSpannableString
@@ -27,6 +31,13 @@ class RunningRecordView @JvmOverloads constructor(
 
     private val binding = RecordRunningViewLayoutBinding.inflate(layoutInflater, this)
 
+    var softAppearance: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            updateAppearance()
+        }
+
     var itemName: String = ""
         set(value) {
             field = value
@@ -42,9 +53,7 @@ class RunningRecordView @JvmOverloads constructor(
     var itemColor: Int = 0
         set(value) {
             field = value
-            setCardBackgroundColor(value)
-            setStripesColor(value)
-            setNowIconColor(value)
+            updateAppearance()
         }
 
     var itemTagColor: Int = Color.WHITE
@@ -179,13 +188,56 @@ class RunningRecordView @JvmOverloads constructor(
             }
     }
 
+    private fun updateAppearance() = with(binding) {
+        val surfaceColor = if (softAppearance) context.getThemedAttr(R.attr.appCardBackgroundColor) else itemColor
+        val textColor = if (softAppearance) {
+            context.getThemedAttr(R.attr.appTextPrimaryColor)
+        } else {
+            ColorUtils.readableContentColor(itemColor)
+        }
+        setCardBackgroundColor(surfaceColor)
+        radius = if (softAppearance) {
+            20.dpToPx().toFloat()
+        } else {
+            resources.getDimension(R.dimen.record_type_card_corner_radius)
+        }
+        minimumHeight = if (softAppearance) 76.dpToPx() else 0
+        listOf(
+            tvRunningRecordItemName, tvRunningRecordItemTimeStarted, tvRunningRecordItemTimer,
+            tvRunningRecordItemTimerTotal, tvRunningRecordItemGoalTime, tvRunningRecordItemComment,
+        )
+            .forEach { it.setTextColor(textColor) }
+        tvRunningRecordItemName.setTypeface(null, if (softAppearance) Typeface.NORMAL else Typeface.BOLD)
+        viewRecordItemStripeStart.visible = !softAppearance
+        viewRecordItemStripeEnd.visible = !softAppearance
+        viewRunningRecordCategoryStripe.visible = softAppearance
+        viewRunningRecordCategoryStripe.setBackgroundColor(itemColor)
+        ivRunningRecordItemIcon.apply {
+            itemIconColor = ColorUtils.readableContentColor(this@RunningRecordView.itemColor)
+            background = if (softAppearance) {
+                GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(this@RunningRecordView.itemColor)
+                }
+            } else {
+                null
+            }
+            layoutParams = layoutParams.also { it.width = (if (softAppearance) 32 else 24).dpToPx() }
+            val padding = if (softAppearance) 5.dpToPx() else 0
+            setPadding(padding, padding, padding, padding)
+        }
+        setItemName()
+        setStripesColor(itemColor)
+        setNowIconColor(itemColor)
+    }
+
     private fun setItemName() = with(binding) {
         if (itemTagName.isEmpty()) {
             tvRunningRecordItemName.text = itemName
         } else {
             val name = "$itemName - $itemTagName"
             tvRunningRecordItemName.text = name.toSpannableString().setForegroundSpan(
-                color = itemTagColor,
+                color = ColorUtils.readableContentColor(cardBackgroundColor.defaultColor, itemTagColor),
                 start = itemName.length,
                 length = name.length - itemName.length,
             )

@@ -30,7 +30,7 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             isCrunchPngs = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android.txt"),
@@ -158,6 +158,8 @@ dependencies {
     androidTestImplementation(libs.uitest.espressoContrib)
     androidTestImplementation(libs.uitest.dagger)
     androidTestImplementation(libs.uitest.room)
+    androidTestImplementation(libs.ktx.room)
+    androidTestImplementation(libs.google.gson)
     androidTestImplementation(libs.uitest.rules)
 }
 

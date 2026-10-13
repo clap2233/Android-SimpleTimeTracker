@@ -64,9 +64,7 @@ class RunningRecordsViewDataInteractor @Inject constructor(
         val durationFormat = prefsInteractor.getDurationFormat()
         val showFirstEnterHint = recordTypes.filterNot(RecordType::hidden).isEmpty()
         val showDefaultTypesButton = !prefsInteractor.getDefaultTypesHidden()
-        val showPomodoroButton = prefsInteractor.getEnablePomodoroMode()
         val showRepeatButton = prefsInteractor.getEnableRepeatButton()
-        val isPomodoroStarted = prefsInteractor.getPomodoroModeStartedTimestampMs() != 0L
         val retroactiveTrackingModeEnabled = prefsInteractor.getRetroactiveTrackingMode()
         val isFiltersCollapsed = prefsInteractor.getIsActivityFiltersCollapsed()
         val isNavBarAtTheBottom = prefsInteractor.getIsNavBarAtTheBottom()
@@ -128,11 +126,6 @@ class RunningRecordsViewDataInteractor @Inject constructor(
                             showSeconds = showSeconds,
                         )
                     }
-                    .plus(
-                        mapper.mapToHasRunningRecords(
-                            startTimersByLongLick = startTimersByLongClick,
-                        ),
-                    )
             }
         }
 
@@ -177,9 +170,8 @@ class RunningRecordsViewDataInteractor @Inject constructor(
                 activityFilterViewDataInteractor.applyFilter(list, filter)
             }
             .map {
-                recordTypeViewDataMapper.mapFiltered(
+                recordTypeViewDataMapper.map(
                     recordType = it,
-                    isFiltered = it.id in recordTypesRunning,
                     numberOfCards = numberOfCards,
                     isDarkTheme = isDarkTheme,
                     checkState = recordTypeViewDataMapper.mapGoalCheckmark(
@@ -188,7 +180,7 @@ class RunningRecordsViewDataInteractor @Inject constructor(
                         allDailyCurrents = allDailyCurrents,
                     ),
                     isComplete = it.id in completeTypeIds,
-                )
+                ).copy(itemIsFiltered = it.id in recordTypesRunning)
             }.search(
                 text = actualSearchText,
                 searchableContent = { name },
@@ -200,13 +192,6 @@ class RunningRecordsViewDataInteractor @Inject constructor(
                         recordTypeViewDataMapper.mapToRepeatItem(
                             numberOfCards = numberOfCards,
                             isDarkTheme = isDarkTheme,
-                        ).let(::add)
-                    }
-                    if (showPomodoroButton) {
-                        recordTypeViewDataMapper.mapToPomodoroItem(
-                            numberOfCards = numberOfCards,
-                            isDarkTheme = isDarkTheme,
-                            isPomodoroStarted = isPomodoroStarted,
                         ).let(::add)
                     }
                     recordTypeViewDataMapper.mapToAddItem(
@@ -249,8 +234,8 @@ class RunningRecordsViewDataInteractor @Inject constructor(
             searchViewData,
             suggestionsViewData,
             filtersViewData,
-            recordTypesViewData,
-            shortcutsViewData,
+            listOf(com.example.util.simpletimetracker.feature_base_adapter.hint.HintViewData("活动", gravity = com.example.util.simpletimetracker.feature_base_adapter.hint.HintViewData.Gravity.START)) + recordTypesViewData,
+            if (shortcutsViewData.isEmpty()) emptyList() else listOf(com.example.util.simpletimetracker.feature_base_adapter.hint.HintViewData("活动模板", gravity = com.example.util.simpletimetracker.feature_base_adapter.hint.HintViewData.Gravity.START)) + shortcutsViewData,
         ).filter {
             it.isNotEmpty()
         }.addBetweenEach { index ->

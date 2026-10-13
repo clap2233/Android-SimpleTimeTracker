@@ -15,6 +15,9 @@ fun createRunningRecordAdapterDelegate(
     transitionNamePrefix: String,
     onItemClick: ((ViewData, Pair<Any, String>) -> Unit) = { _, _ -> },
     onItemLongClick: ((ViewData, Pair<Any, String>) -> Unit) = { _, _ -> },
+    onStop: ((ViewData) -> Unit)? = null,
+    onEdit: ((ViewData, Pair<Any, String>) -> Unit)? = null,
+    softAppearance: Boolean = false,
 ) = createRecyclerBindingAdapterDelegate<ViewData, Binding>(
     Binding::inflate,
 ) { binding, item, payloads ->
@@ -26,6 +29,10 @@ fun createRunningRecordAdapterDelegate(
         val rebind: Boolean = payloads.isEmpty() || payloads.first() !is List<*>
         val updates = (payloads.firstOrNull() as? List<*>) ?: emptyList<Int>()
 
+        binding.runningActions.visibility = if (onStop != null && onEdit != null) android.view.View.VISIBLE else android.view.View.GONE
+        binding.runningStop.setOnClickListener { onStop?.invoke(item) }
+        binding.runningEdit.setOnClickListener { onEdit?.invoke(item, this to transitionName) }
+        this.softAppearance = softAppearance
         bindState(item, rebind, updates)
         setOnClick { onItemClick(item, this to transitionName) }
         setOnLongClick { onItemLongClick(item, this to transitionName) }

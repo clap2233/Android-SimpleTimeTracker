@@ -19,12 +19,14 @@ fun createRecordTypeSuggestionAdapterDelegate(
     onItemClickWithData: ((BaseViewData, Pair<Any, String>) -> Unit)? = null,
     onItemLongClick: ((BaseViewData, Pair<Any, String>) -> Unit)? = null,
     withTransition: Boolean = true,
+    softAppearance: Boolean = false,
 ): RecyclerAdapterDelegate {
     val baseAdapter = createRecordTypeAdapterDelegate(
         onItemClick = onItemClick,
         onItemClickWithData = onItemClickWithData,
         onItemLongClick = onItemLongClick,
         withTransition = withTransition,
+        softAppearance = softAppearance,
         transitionNamePrefix = TransitionNames.RECORD_TYPE_SUGGESTION,
     )
 

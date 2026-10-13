@@ -46,6 +46,15 @@
             app:layout_constraintWidth_percent="0.2"
             tools:background="@color/red_500" />
 
+        <View
+            android:id="@+id/viewRunningRecordCategoryStripe"
+            android:layout_width="4dp"
+            android:layout_height="32dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <com.example.util.simpletimetracker.feature_views.IconView
             android:id="@+id/ivRunningRecordItemIcon"
             android:layout_width="24dp"

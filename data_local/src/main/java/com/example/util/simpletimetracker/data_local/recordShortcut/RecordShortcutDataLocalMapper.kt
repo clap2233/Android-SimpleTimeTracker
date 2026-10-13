@@ -19,6 +19,8 @@ class RecordShortcutDataLocalMapper @Inject constructor() {
                 typeId = dbo.shortcut.typeId,
                 comment = dbo.shortcut.comment,
                 tags = dbo.recordTags.map(::map),
+                name = dbo.shortcut.name,
+                summary = dbo.shortcut.summary,
             )
         }
 
@@ -43,6 +45,8 @@ class RecordShortcutDataLocalMapper @Inject constructor() {
             targetType = targetType,
             settingAction = settingTarget?.action
                 ?.let(::mapSettingAction).orZero(),
+            name = recordTarget?.name.orEmpty(),
+            summary = recordTarget?.summary.orEmpty(),
         )
     }
 

@@ -281,11 +281,11 @@ class PrefsInteractor @Inject constructor(
     }
 
     suspend fun getRetroactiveTrackingMode(): Boolean = withContext(Dispatchers.IO) {
-        prefsRepo.retroactiveTrackingMode
+        false
     }
 
     suspend fun setRetroactiveTrackingMode(isEnabled: Boolean) = withContext(Dispatchers.IO) {
-        prefsRepo.retroactiveTrackingMode = isEnabled
+        prefsRepo.retroactiveTrackingMode = false
     }
 
     suspend fun getRetroactiveMultitaskingHintWasHidden(): Boolean = withContext(Dispatchers.IO) {
@@ -526,11 +526,11 @@ class PrefsInteractor @Inject constructor(
     }
 
     suspend fun getAllowMultitasking(): Boolean = withContext(Dispatchers.IO) {
-        prefsRepo.allowMultitasking
+        false
     }
 
     suspend fun setAllowMultitasking(isEnabled: Boolean) = withContext(Dispatchers.IO) {
-        prefsRepo.allowMultitasking = isEnabled
+        prefsRepo.allowMultitasking = false
     }
 
     suspend fun getShowNotifications(): Boolean = withContext(Dispatchers.IO) {

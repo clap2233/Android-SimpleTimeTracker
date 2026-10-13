@@ -5,6 +5,7 @@ import com.example.util.simpletimetracker.domain.extension.removeIf
 import com.example.util.simpletimetracker.domain.favourite.model.RecordTypeToFavouriteComment
 import com.example.util.simpletimetracker.domain.favourite.repo.RecordTypeToFavouriteCommentRepo
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -77,4 +78,7 @@ class RecordTypeToFavouriteCommentRepoImpl @Inject constructor(
         accessSource = { dao.clear() },
         afterSourceAccess = { cache = null },
     )
+    suspend fun invalidateCache() {
+        mutex.withLock { cache = null }
+    }
 }

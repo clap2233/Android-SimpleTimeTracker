@@ -9,6 +9,7 @@ import com.example.util.simpletimetracker.domain.recordType.model.RecordTypeGoal
 import com.example.util.simpletimetracker.domain.recordType.repo.RecordTypeGoalRepo
 import javax.inject.Inject
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class RecordTypeGoalRepoImpl @Inject constructor(
     private val dao: RecordTypeGoalDao,
@@ -91,5 +92,8 @@ class RecordTypeGoalRepoImpl @Inject constructor(
 
     private fun RecordTypeGoal.isTag(): Boolean {
         return idData is IdData.Tag
+    }
+    suspend fun invalidateCache() {
+        mutex.withLock { cache = null }
     }
 }

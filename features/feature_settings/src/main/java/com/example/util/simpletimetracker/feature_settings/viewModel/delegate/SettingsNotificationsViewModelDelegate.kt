@@ -38,9 +38,9 @@ class SettingsNotificationsViewModelDelegate @Inject constructor(
         this.parent = parent
     }
 
-    suspend fun getViewData(): List<ViewHolderType> {
+    suspend fun getViewData(expanded: Boolean = false): List<ViewHolderType> {
         return settingsNotificationsViewDataInteractor.execute(
-            isCollapsed = isCollapsed,
+            isCollapsed = if (expanded) false else isCollapsed,
         )
     }
 

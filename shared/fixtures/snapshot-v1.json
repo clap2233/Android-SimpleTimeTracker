@@ -1,0 +1,453 @@
+{
+  "schemaVersion": 1,
+  "dataSetId": "10000000-0000-4000-8000-000000000001",
+  "snapshotId": "20000000-0000-4000-8000-000000000001",
+  "createdAt": 1791252000000,
+  "recordTypes": [
+    {
+      "id": "1",
+      "name": "日常必需",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": "-2499102"
+      },
+      "defaultDuration": 0,
+      "note": "",
+      "hidden": false
+    },
+    {
+      "id": "2",
+      "name": "照顾自己",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": "-14132154"
+      },
+      "defaultDuration": 0,
+      "note": "",
+      "hidden": false
+    },
+    {
+      "id": "3",
+      "name": "健康",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": "-4794200"
+      },
+      "defaultDuration": 0,
+      "note": "",
+      "hidden": false
+    },
+    {
+      "id": "4",
+      "name": "学习",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": "-9587284"
+      },
+      "defaultDuration": 0,
+      "note": "",
+      "hidden": false
+    },
+    {
+      "id": "5",
+      "name": "PKR复习",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": "-3227928"
+      },
+      "defaultDuration": 0,
+      "note": "",
+      "hidden": false
+    },
+    {
+      "id": "6",
+      "name": "创作／发挥",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": "-4662030"
+      },
+      "defaultDuration": 0,
+      "note": "",
+      "hidden": false
+    },
+    {
+      "id": "7",
+      "name": "用脑／事务",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": "-12294771"
+      },
+      "defaultDuration": 0,
+      "note": "",
+      "hidden": false
+    },
+    {
+      "id": "8",
+      "name": "娱乐",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": "-1597286"
+      },
+      "defaultDuration": 0,
+      "note": "",
+      "hidden": false
+    },
+    {
+      "id": "9",
+      "name": "熟悉关系",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": "-1196686"
+      },
+      "defaultDuration": 0,
+      "note": "",
+      "hidden": false
+    },
+    {
+      "id": "10",
+      "name": "新关系",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": "-926048"
+      },
+      "defaultDuration": 0,
+      "note": "",
+      "hidden": false
+    }
+  ],
+  "categories": [],
+  "recordTypeCategories": [],
+  "recordTypeTags": [],
+  "defaultRecordTypeTags": [],
+  "settingShortcuts": [],
+  "tags": [
+    {
+      "id": "100",
+      "name": "快乐",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": ""
+      },
+      "iconColorSource": "0",
+      "note": "",
+      "archived": false,
+      "valueType": "NUMERIC",
+      "valueSuffix": "",
+      "purpose": "GENERAL"
+    },
+    {
+      "id": "101",
+      "name": "意义",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": ""
+      },
+      "iconColorSource": "0",
+      "note": "",
+      "archived": false,
+      "valueType": "NUMERIC",
+      "valueSuffix": "",
+      "purpose": "GENERAL"
+    },
+    {
+      "id": "201",
+      "name": "播客",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": ""
+      },
+      "iconColorSource": "0",
+      "note": "",
+      "archived": false,
+      "valueType": "NONE",
+      "valueSuffix": "",
+      "purpose": "GENERAL"
+    },
+    {
+      "id": "202",
+      "name": "学习内容",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": ""
+      },
+      "iconColorSource": "0",
+      "note": "",
+      "archived": false,
+      "valueType": "NONE",
+      "valueSuffix": "",
+      "purpose": "GENERAL"
+    },
+    {
+      "id": "203",
+      "name": "家中",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": ""
+      },
+      "iconColorSource": "0",
+      "note": "",
+      "archived": false,
+      "valueType": "NONE",
+      "valueSuffix": "",
+      "purpose": "ENVIRONMENT"
+    },
+    {
+      "id": "205",
+      "name": "公园",
+      "icon": "",
+      "color": {
+        "colorId": 0,
+        "colorInt": ""
+      },
+      "iconColorSource": "0",
+      "note": "",
+      "archived": false,
+      "valueType": "NONE",
+      "valueSuffix": "",
+      "purpose": "ENVIRONMENT"
+    }
+  ],
+  "ratingTagIds": {
+    "happinessTagId": "100",
+    "meaningTagId": "101"
+  },
+  "records": [
+    {
+      "id": "1",
+      "typeId": "1",
+      "timeStarted": 1791215100000,
+      "timeEnded": 1791216900000,
+      "comment": "",
+      "tags": [],
+      "reviewState": "CONFIRMED",
+      "summary": "睡眠",
+      "zoneId": "Asia/Shanghai",
+      "templateId": null
+    },
+    {
+      "id": "2",
+      "typeId": "2",
+      "timeStarted": 1791244800000,
+      "timeEnded": 1791246600000,
+      "comment": "",
+      "tags": [
+        {
+          "tagId": "100",
+          "numericValue": 4,
+          "ratedAt": 1791247200000
+        },
+        {
+          "tagId": "101",
+          "numericValue": 3,
+          "ratedAt": 1791247200000
+        },
+        {
+          "tagId": "201",
+          "numericValue": null,
+          "ratedAt": null
+        },
+        {
+          "tagId": "202",
+          "numericValue": null,
+          "ratedAt": null
+        }
+      ],
+      "reviewState": "CONFIRMED",
+      "summary": "洗碗＋听播客",
+      "zoneId": "Asia/Shanghai",
+      "templateId": "7"
+    },
+    {
+      "id": "3",
+      "typeId": "0",
+      "timeStarted": 1791246600000,
+      "timeEnded": 1791247500000,
+      "comment": "",
+      "tags": [],
+      "reviewState": "CONFIRMED",
+      "summary": "未分类",
+      "zoneId": "Asia/Shanghai",
+      "templateId": null
+    },
+    {
+      "id": "4",
+      "typeId": "4",
+      "timeStarted": 1791248400000,
+      "timeEnded": 1791249160000,
+      "comment": "",
+      "tags": [
+        {
+          "tagId": "100",
+          "numericValue": 2,
+          "ratedAt": 1791249180000
+        },
+        {
+          "tagId": "101",
+          "numericValue": 5,
+          "ratedAt": 1791249180000
+        },
+        {
+          "tagId": "203",
+          "numericValue": null,
+          "ratedAt": null
+        }
+      ],
+      "reviewState": "PENDING",
+      "summary": "家中阅读",
+      "zoneId": "Asia/Shanghai",
+      "templateId": "8"
+    },
+    {
+      "id": "5",
+      "typeId": "4",
+      "timeStarted": 1791249300000,
+      "timeEnded": 1791250200000,
+      "comment": "",
+      "tags": [
+        {
+          "tagId": "100",
+          "numericValue": 4,
+          "ratedAt": 1791250260000
+        },
+        {
+          "tagId": "101",
+          "numericValue": 5,
+          "ratedAt": 1791250260000
+        },
+        {
+          "tagId": "205",
+          "numericValue": null,
+          "ratedAt": null
+        }
+      ],
+      "reviewState": "CONFIRMED",
+      "summary": "公园阅读",
+      "zoneId": "Asia/Shanghai",
+      "templateId": "8"
+    }
+  ],
+  "runningRecords": [
+    {
+      "id": "4",
+      "timeStarted": 1791251100000,
+      "comment": "",
+      "tags": [],
+      "summary": "继续阅读",
+      "zoneId": "Asia/Shanghai",
+      "templateId": "8"
+    }
+  ],
+  "photos": [
+    {
+      "id": "1",
+      "recordId": "2",
+      "runningRecordId": null,
+      "relativePath": "photos/7ac2abfce2be8b46dd9826d597d94edeefc1570b4a992622721b90a1850e3ee9.png",
+      "sha256": "7ac2abfce2be8b46dd9826d597d94edeefc1570b4a992622721b90a1850e3ee9",
+      "position": 0,
+      "mimeType": "image/png",
+      "sizeBytes": 68
+    }
+  ],
+  "templates": [
+    {
+      "id": "7",
+      "typeId": "2",
+      "name": "洗碗时听播客",
+      "summary": "洗碗＋听播客",
+      "comment": "",
+      "tags": [
+        {
+          "tagId": "201",
+          "numericValue": null,
+          "ratedAt": null
+        },
+        {
+          "tagId": "202",
+          "numericValue": null,
+          "ratedAt": null
+        }
+      ]
+    },
+    {
+      "id": "8",
+      "typeId": "4",
+      "name": "阅读",
+      "summary": "阅读",
+      "comment": "",
+      "tags": []
+    }
+  ],
+  "weeklyReviews": [
+    {
+      "id": "1",
+      "weekStart": "2026-10-05",
+      "zoneId": "Asia/Shanghai",
+      "timeAbundance": "这周留出了阅读的时间",
+      "pleasantRecords": [
+        {
+          "recordId": "5",
+          "caption": "公园阅读"
+        }
+      ],
+      "unpleasantRecords": [
+        {
+          "recordId": "4",
+          "caption": "家中阅读"
+        }
+      ],
+      "keep": {
+        "text": "保留户外阅读",
+        "recordId": "5",
+        "templateId": null
+      },
+      "adjust": {
+        "text": "换一种环境试阅读",
+        "recordId": "4",
+        "templateId": null
+      },
+      "attentionRecordIds": [
+        "4"
+      ],
+      "pinnedTemplateIds": [
+        "7",
+        "8"
+      ]
+    }
+  ],
+  "trials": [
+    {
+      "id": "1",
+      "reviewId": "1",
+      "source": {
+        "recordId": "4",
+        "caption": "家中阅读"
+      },
+      "description": "试一次在公园阅读",
+      "relatedRecordIds": [
+        "5"
+      ]
+    }
+  ],
+  "businessSettings": {
+    "firstDayOfWeek": 2,
+    "startOfDayShift": 0,
+    "activityReminderDuration": 900,
+    "activityReminderRecurrent": true
+  }
+}

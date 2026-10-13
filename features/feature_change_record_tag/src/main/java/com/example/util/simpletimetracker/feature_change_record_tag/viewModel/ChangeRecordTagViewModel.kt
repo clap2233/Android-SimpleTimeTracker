@@ -68,6 +68,7 @@ class ChangeRecordTagViewModel @Inject constructor(
     private val goalsViewModelDelegate: GoalsViewModelDelegate,
     private val colorSelectionViewModelDelegate: ColorSelectionViewModelDelegate,
     private val iconSelectionViewModelDelegateImpl: IconSelectionViewModelDelegate,
+    private val settingsRepo: com.example.util.simpletimetracker.domain.lifeClock.repo.LifeClockSettingsRepo,
 ) : BaseViewModel(),
     GoalsViewModelDelegate by goalsViewModelDelegate,
     ColorSelectionViewModelDelegate by colorSelectionViewModelDelegate,
@@ -135,7 +136,11 @@ class ChangeRecordTagViewModel @Inject constructor(
     val nameErrorMessage: LiveData<String> = MutableLiveData("")
     val iconColorSourceSelected: LiveData<Boolean> = MutableLiveData(false)
     val archiveIconVisibility: LiveData<Boolean> by lazy { MutableLiveData(recordTagId != 0L) }
-    val deleteIconVisibility: LiveData<Boolean> by lazy { MutableLiveData(recordTagId != 0L) }
+    val deleteIconVisibility: LiveData<Boolean> by lazy {
+        MutableLiveData(false).also { visible ->
+            viewModelScope.launch { visible.value = recordTagId != 0L && recordTagId !in settingsRepo.getOrCreate().ratingTagIds }
+        }
+    }
     val statsIconVisibility: LiveData<Boolean> by lazy { MutableLiveData(recordTagId != 0L) }
     val keyboardVisibility: LiveData<Boolean> by lazy { MutableLiveData(recordTagId == 0L) }
 
@@ -349,8 +354,8 @@ class ChangeRecordTagViewModel @Inject constructor(
                 color = colorSelectionViewModelDelegate.newColor,
                 iconColorSource = newIconColorSource,
                 note = newNote,
-                valueType = newValueType,
-                valueSuffix = newValueSuffix,
+                valueType = if (recordTagId in settingsRepo.getOrCreate().ratingTagIds) RecordTagValueType.NUMERIC else newValueType,
+                valueSuffix = if (recordTagId in settingsRepo.getOrCreate().ratingTagIds) "" else newValueSuffix,
                 purpose = original?.purpose ?: RecordTagPurpose.GENERAL,
             ).let {
                 val addedId = recordTagInteractor.add(it)
@@ -382,6 +387,10 @@ class ChangeRecordTagViewModel @Inject constructor(
         router.back() // Close dialog.
         deleteButtonEnabled.set(false)
         viewModelScope.launch {
+            if (recordTagId in settingsRepo.getOrCreate().ratingTagIds) {
+                deleteButtonEnabled.set(true)
+                return@launch
+            }
             if (recordTagId != 0L) {
                 removeRecordTagMediator.remove(recordTagId, fromArchive = false)
                 showMessage(R.string.archive_tag_deleted)

@@ -6,6 +6,20 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
+import android.widget.EditText
+import android.text.InputType
+import android.widget.Toast
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.example.util.simpletimetracker.domain.record.model.Record
+import com.example.util.simpletimetracker.domain.record.model.RecordReviewState
+import com.example.util.simpletimetracker.core.R
+import java.math.BigDecimal
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+import kotlinx.coroutines.launch
 import com.example.util.simpletimetracker.core.base.BaseFragment
 import com.example.util.simpletimetracker.core.di.BaseViewModelFactory
 import com.example.util.simpletimetracker.feature_dialogs.api.DateTimeDialogListener
@@ -52,6 +66,17 @@ class ChangeRecordFragment :
     lateinit var commentDelegateProvider: CommentSelectionViewDelegateProvider
 
     private val viewModel: ChangeRecordViewModel by viewModels()
+    private val details = RecordDetailsController(this) { viewModel }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        details.restoreState(savedInstanceState)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        details.saveState(outState)
+    }
     private val removeRecordViewModel: RemoveRecordViewModel by activityViewModels(
         factoryProducer = { removeRecordViewModelFactory },
     )
@@ -88,9 +113,14 @@ class ChangeRecordFragment :
         core.initUx(this@ChangeRecordFragment, layoutChangeRecordCore)
         layoutChangeRecordCore.btnChangeRecordStatistics.setOnClick(viewModel::onStatisticsClick)
         layoutChangeRecordCore.btnChangeRecordDelete.setOnClick(viewModel::onDeleteClick)
+        layoutChangeRecordCore.btnChangeRecordSave.setOnClick { viewModel.saveAs(RecordReviewState.PENDING) }
+        lifeClockOrganizeButton.setOnClick { viewModel.saveAs(RecordReviewState.CONFIRMED) }
+        lifeClockOrganizeButton.text = "确认时间"
+        layoutChangeRecordCore.btnChangeRecordMore.setOnClickListener { showOrganizeMenu() }
     }
 
     override fun initViewModel() = with(binding) {
+        details.bind(layoutChangeRecordCore.lifeClockExperienceEntry)
         with(viewModel) {
             extra = this@ChangeRecordFragment.extra
             record.observe(::updatePreview)
@@ -101,6 +131,15 @@ class ChangeRecordFragment :
                 )
             }
             core.initViewModel(this@ChangeRecordFragment, layoutChangeRecordCore)
+            reviewStatus.observe { state ->
+                val label = when (state) {
+                    1 -> R.string.life_clock_confirmed
+                    2 -> R.string.life_clock_needs_repair
+                    else -> R.string.life_clock_pending
+                }
+                lifeClockRecordState.text = getString(R.string.life_clock_current_state, getString(label))
+            }
+            saveButtonEnabled.observe(lifeClockOrganizeButton::setEnabled)
         }
         with(removeRecordViewModel) {
             prepare()
@@ -111,6 +150,133 @@ class ChangeRecordFragment :
     override fun onResume() {
         super.onResume()
         viewModel.onVisible()
+    }
+
+    private fun showOrganizeMenu() {
+        val actions = listOf(
+            R.string.life_clock_save_pending, R.string.life_clock_confirm, R.string.life_clock_merge_previous,
+            R.string.life_clock_split, R.string.life_clock_boundary_previous, R.string.life_clock_boundary_next,
+        ).take(if (extra is ChangeRecordParams.Tracked) 6 else 2).map(::getString) +
+            if (extra is ChangeRecordParams.Tracked) listOf("详细统计", "删除记录") else emptyList()
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.life_clock_organize)
+            .setItems(actions.toTypedArray()) { _, index ->
+                when (index) {
+                    0 -> viewModel.saveAs(RecordReviewState.PENDING)
+                    1 -> viewModel.saveAs(RecordReviewState.CONFIRMED)
+                    2 -> prepareMerge()
+                    3 -> prepareSplit()
+                    4 -> prepareBoundary(previous = true)
+                    5 -> prepareBoundary(previous = false)
+                    6 -> viewModel.onStatisticsClick()
+                    7 -> if (binding.layoutChangeRecordCore.btnChangeRecordDelete.isEnabled) viewModel.onDeleteClick()
+                }
+            }.show()
+    }
+
+    private fun prepareMerge() = viewLifecycleOwner.lifecycleScope.launch {
+        val current = viewModel.editorRecord()
+        val previous = viewModel.neighbor(previous = true)
+        if (previous == null) {
+            Toast.makeText(requireContext(), R.string.life_clock_gap, Toast.LENGTH_LONG).show()
+            return@launch
+        }
+        val tags = previous.tags.associateBy { it.tagId }.toMutableMap()
+        val conflicts = mutableListOf<Pair<RecordBase.Tag, RecordBase.Tag>>()
+        current.tags.forEach {
+            val old = tags[it.tagId]
+            if (old?.numericValue != null && it.numericValue != null && old.numericValue != it.numericValue) conflicts += old to it
+            tags[it.tagId] = if (it.numericValue == null && old?.numericValue != null) old else it
+        }
+        val names = conflicts.map { viewModel.tagName(it.first.tagId) }
+        fun choose(index: Int) {
+            if (index == conflicts.size) {
+                confirmOperation("${range(previous)}\n${range(current)}\n→ ${range(current.copy(timeStarted = previous.timeStarted))}") {
+                    viewModel.mergePrevious(previous.id, tags.values.toList())
+                }
+                return
+            }
+            val (old, new) = conflicts[index]
+            MaterialAlertDialogBuilder(requireContext()).setTitle(names[index])
+                .setItems(
+                    arrayOf(
+                        "${getString(R.string.life_clock_current_value)}: ${new.numericValue}",
+                        "${getString(R.string.life_clock_previous_value)}: ${old.numericValue}",
+                        getString(R.string.life_clock_clear_value),
+                    ),
+                ) { _, choice ->
+                    tags[new.tagId] = when (choice) {
+                        0 -> new
+                        1 -> old
+                        else -> new.copy(numericValue = null, ratedAt = null)
+                    }
+                    choose(index + 1)
+                }.show()
+        }
+        choose(0)
+    }
+
+    private fun prepareSplit() = viewLifecycleOwner.lifecycleScope.launch {
+        val record = viewModel.editorRecord()
+        minutesDialog(range(record), record.timeStarted) { boundary ->
+            MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.life_clock_split)
+                .setMessage("${range(record.copy(timeEnded = boundary))}\n${range(record.copy(timeStarted = boundary))}")
+                .setPositiveButton(R.string.life_clock_keep_before) { _, _ -> viewModel.splitAt(boundary, true) }
+                .setNegativeButton(R.string.life_clock_keep_after) { _, _ -> viewModel.splitAt(boundary, false) }
+                .setNeutralButton(R.string.cancel, null).show()
+        }
+    }
+
+    private fun prepareBoundary(previous: Boolean) = viewLifecycleOwner.lifecycleScope.launch {
+        val current = viewModel.editorRecord()
+        val adjacent = viewModel.boundaryNeighbor(previous) ?: run {
+            Toast.makeText(requireContext(), R.string.life_clock_gap, Toast.LENGTH_LONG).show()
+            return@launch
+        }
+        val neighbor = adjacent.record
+        val first = if (previous) neighbor else current
+        val second = if (previous) current else neighbor
+        minutesDialog("${range(first)}\n${range(second)}", first.timeStarted) { boundary ->
+            confirmOperation("${range(first.copy(timeEnded = boundary))}\n${range(second.copy(timeStarted = boundary))}") {
+                viewModel.adjustWith(neighbor.id, boundary, previous, adjacent.isRunning)
+            }
+        }
+    }
+
+    private fun minutesDialog(preview: String, start: Long, apply: (Long) -> Unit) {
+        val input = EditText(requireContext()).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+            hint = getString(R.string.life_clock_minutes_before)
+        }
+        val dialog = MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.life_clock_minutes_before)
+            .setMessage(preview).setView(input).setPositiveButton(R.string.ok, null).setNegativeButton(R.string.cancel, null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val boundary = runCatching {
+                    BigDecimal.valueOf(start).add(BigDecimal(input.text.toString().trim().replace(',', '.')).multiply(BigDecimal(60_000))).longValueExact()
+                }.getOrNull()
+                if (boundary == null || boundary <= start) {
+                    input.error = getString(R.string.life_clock_empty_interval)
+                } else {
+                    dialog.dismiss()
+                    apply(boundary)
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun confirmOperation(preview: String, apply: () -> Unit) {
+        MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.life_clock_organize)
+            .setMessage("${getString(R.string.life_clock_confirm_operation)}\n\n$preview")
+            .setPositiveButton(R.string.ok) { _, _ -> apply() }.setNegativeButton(R.string.cancel, null).show()
+    }
+
+    private fun range(record: Record): String {
+        val format = SimpleDateFormat("MM-dd HH:mm:ss", Locale.getDefault()).apply {
+            timeZone = record.zoneId?.let(TimeZone::getTimeZone) ?: TimeZone.getDefault()
+        }
+        return "${format.format(Date(record.timeStarted))} → ${format.format(Date(record.timeEnded))} (${(record.timeEnded - record.timeStarted) / 60000.0} min)"
     }
 
     override fun onDestroy() {
@@ -174,13 +340,14 @@ class ChangeRecordFragment :
         animated: Boolean = true,
     ) = with(binding.layoutChangeRecordCore) {
         with(binding.previewChangeRecord) {
+            val compact = resources.configuration.screenWidthDp < 360 || resources.configuration.fontScale > 1.3f
             itemName = item.recordPreview.name
-            itemTagName = item.recordPreview.tagName
+            itemTagName = if (compact) "" else item.recordPreview.tagName
             itemIcon = item.recordPreview.iconId
-            itemTimeStarted = item.recordPreview.timeStarted
-            itemTimeEnded = item.recordPreview.timeFinished
+            itemTimeStarted = if (compact) "" else item.recordPreview.timeStarted
+            itemTimeEnded = if (compact) "" else item.recordPreview.timeFinished
             itemDuration = item.recordPreview.duration
-            itemComment = item.recordPreview.comment
+            itemComment = if (compact) "" else item.recordPreview.comment
 
             if (animated) {
                 typeColorAnimator?.cancel()

@@ -18,6 +18,7 @@ fun createRecordShortcutAdapterDelegate(
     onLongClickWithTransition: ((ViewData, Pair<Any, String>) -> Unit)? = null,
     onSpinnerPositionSelected: ((block: ViewData, position: Int) -> Unit)? = null,
     onButtonClicked: ((block: ViewData) -> Unit)? = null,
+    softAppearance: Boolean = false,
 ) = createRecyclerBindingAdapterDelegate<ViewData, Binding>(
     Binding::inflate,
 ) { binding, item, _ ->
@@ -27,6 +28,7 @@ fun createRecordShortcutAdapterDelegate(
 
         binding.tvRecordShortcutItemHint.text = item.hint
 
+        this.softAppearance = softAppearance
         itemColor = item.data.color
         itemName = item.data.name
         itemIconColor = item.data.iconColor

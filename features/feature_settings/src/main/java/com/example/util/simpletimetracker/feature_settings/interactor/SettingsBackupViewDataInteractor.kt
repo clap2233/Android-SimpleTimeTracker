@@ -35,7 +35,7 @@ class SettingsBackupViewDataInteractor @Inject constructor(
 
         result += SettingsCollapseViewData(
             block = SettingsBlock.BackupCollapse,
-            title = resourceRepo.getString(R.string.settings_backup_title),
+            title = resourceRepo.getString(R.string.life_clock_legacy_backup),
             opened = !isCollapsed,
             iconResId = R.drawable.save,
             iconColor = (if (isDarkTheme) R.color.green_300 else R.color.green_200)

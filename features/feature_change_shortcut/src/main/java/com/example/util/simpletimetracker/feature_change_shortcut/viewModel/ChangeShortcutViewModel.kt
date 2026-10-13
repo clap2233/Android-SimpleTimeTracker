@@ -204,10 +204,16 @@ class ChangeShortcutViewModel @Inject constructor(
         saveButtonEnabled.set(false)
         viewModelScope.launch {
             if (shortcutId != 0L) {
+                val original = recordShortcutInteractor.get(shortcutId)?.target as? RecordShortcut.Target.Record
+                val targetToSave = if (target is RecordShortcut.Target.Record && original != null) {
+                    target.copy(name = original.name, summary = original.summary)
+                } else {
+                    target
+                }
                 recordShortcutInteractor.update(
                     RecordShortcut(
                         id = shortcutId,
-                        target = target,
+                        target = targetToSave,
                     ),
                 )
             } else {

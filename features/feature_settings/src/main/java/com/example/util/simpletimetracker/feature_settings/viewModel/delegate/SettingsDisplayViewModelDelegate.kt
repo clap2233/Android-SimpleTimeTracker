@@ -49,9 +49,9 @@ class SettingsDisplayViewModelDelegate @Inject constructor(
         this.parent = parent
     }
 
-    suspend fun getViewData(): List<ViewHolderType> {
+    suspend fun getViewData(expanded: Boolean = false): List<ViewHolderType> {
         return settingsDisplayViewDataInteractor.execute(
-            isCollapsed = isCollapsed,
+            isCollapsed = if (expanded) false else isCollapsed,
         )
     }
 

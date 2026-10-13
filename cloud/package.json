@@ -1,0 +1,32 @@
+{
+  "name": "life-time-clock-cloud",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12 <23"
+  },
+  "scripts": {
+    "test": "tsx --test test/*.test.ts",
+    "check": "tsc --noEmit",
+    "build": "vite build && tsc -p tsconfig.server.json",
+    "dev": "tsx server/main.ts",
+    "start": "node dist/server/main.js",
+    "web": "vite --host 127.0.0.1"
+  },
+  "dependencies": {
+    "bmp-js": "0.1.0",
+    "fastify": "5.12.5",
+    "heic-decode": "2.1.0",
+    "jsonc-parser": "3.3.1",
+    "luxon": "3.7.2",
+    "sharp": "0.34.5",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/luxon": "3.7.1",
+    "@types/node": "22.18.8",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "vite": "8.3.3"
+  }
+}

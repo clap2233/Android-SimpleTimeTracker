@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <attr name="lifeClockSoftSurfaceColor" format="color" />
+    <attr name="lifeClockAccentSurfaceColor" format="color" />
+    <attr name="lifeClockApricotSurfaceColor" format="color" />
+    <attr name="lifeClockIllustrationAlpha" format="float" />
     <attr name="appCurrentTheme" format="reference" />
     <attr name="appContrastColor" format="reference" />
     <attr name="appTextPrimaryColor" format="reference" />

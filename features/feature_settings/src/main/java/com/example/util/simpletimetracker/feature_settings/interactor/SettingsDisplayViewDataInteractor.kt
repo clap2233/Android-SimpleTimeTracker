@@ -15,7 +15,6 @@ import com.example.util.simpletimetracker.feature_settings.viewData.RepeatButton
 import com.example.util.simpletimetracker.feature_settings.viewData.WidgetTransparencyViewData
 import com.example.util.simpletimetracker.feature_settings.views.SettingsBottomViewData
 import com.example.util.simpletimetracker.feature_settings.views.SettingsCheckboxViewData
-import com.example.util.simpletimetracker.feature_settings.views.SettingsCheckboxWithButtonViewData
 import com.example.util.simpletimetracker.feature_settings.views.SettingsCheckboxWithRangeViewData
 import com.example.util.simpletimetracker.feature_settings.views.SettingsCollapseViewData
 import com.example.util.simpletimetracker.feature_settings.views.SettingsHintViewData
@@ -171,27 +170,6 @@ class SettingsDisplayViewDataInteractor @Inject constructor(
                     processSameItemSelected = false,
                 ).let(::SettingsSpinnerEvenViewData)
             }
-            val enablePomodoroMode = prefsInteractor.getEnablePomodoroMode()
-            result += SettingsCheckboxWithButtonViewData(
-                data = SettingsCheckboxViewData(
-                    block = SettingsBlock.DisplayEnablePomodoroMode,
-                    title = resourceRepo.getString(R.string.settings_enable_pomodoro_mode),
-                    subtitle = "",
-                    isChecked = enablePomodoroMode,
-                    bottomSpaceIsVisible = true,
-                    dividerIsVisible = true,
-                ),
-                buttonBlock = SettingsBlock.DisplayPomodoroModeActivities,
-                isButtonVisible = enablePomodoroMode,
-            )
-            result += SettingsCheckboxViewData(
-                block = SettingsBlock.DisplayGoalsOnSeparateTabs,
-                title = resourceRepo.getString(R.string.settings_show_goals_separately),
-                subtitle = "",
-                isChecked = prefsInteractor.getShowGoalsSeparately(),
-                bottomSpaceIsVisible = true,
-                dividerIsVisible = true,
-            )
             result += SettingsCheckboxViewData(
                 block = SettingsBlock.DisplayNavBarAtTheBottom,
                 title = resourceRepo.getString(R.string.settings_show_nav_bar_at_the_bottom),

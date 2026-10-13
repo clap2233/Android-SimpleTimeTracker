@@ -15,14 +15,12 @@ import com.example.util.simpletimetracker.feature_settings.interactor.SettingsAd
 import com.example.util.simpletimetracker.feature_settings.mapper.SettingsMapper
 import com.example.util.simpletimetracker.feature_settings.viewModel.delegate.SettingsAdditionalViewModelDelegate
 import com.example.util.simpletimetracker.feature_settings.viewModel.delegate.SettingsBackupViewModelDelegate
-import com.example.util.simpletimetracker.feature_settings.viewModel.delegate.SettingsContributorsViewModelDelegate
 import com.example.util.simpletimetracker.feature_settings.viewModel.delegate.SettingsDisplayViewModelDelegate
 import com.example.util.simpletimetracker.feature_settings.viewModel.delegate.SettingsExportViewModelDelegate
 import com.example.util.simpletimetracker.feature_settings.viewModel.delegate.SettingsMainViewModelDelegate
 import com.example.util.simpletimetracker.feature_settings.viewModel.delegate.SettingsNotificationsViewModelDelegate
 import com.example.util.simpletimetracker.feature_settings.viewModel.delegate.SettingsParent
 import com.example.util.simpletimetracker.feature_settings.viewModel.delegate.SettingsRatingViewModelDelegate
-import com.example.util.simpletimetracker.feature_settings.viewModel.delegate.SettingsTranslatorsViewModelDelegate
 import com.example.util.simpletimetracker.navigation.Router
 import com.example.util.simpletimetracker.navigation.params.screen.DataExportSettingsResult
 import com.example.util.simpletimetracker.navigation.params.screen.DateTimeDialogParams
@@ -34,6 +32,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    private val savedState: androidx.lifecycle.SavedStateHandle,
     private val mainDelegate: SettingsMainViewModelDelegate,
     private val displayDelegate: SettingsDisplayViewModelDelegate,
     private val router: Router,
@@ -43,12 +42,17 @@ class SettingsViewModel @Inject constructor(
     private val additionalDelegate: SettingsAdditionalViewModelDelegate,
     private val backupDelegate: SettingsBackupViewModelDelegate,
     private val exportDelegate: SettingsExportViewModelDelegate,
-    private val translatorsDelegate: SettingsTranslatorsViewModelDelegate,
-    private val contributorsDelegate: SettingsContributorsViewModelDelegate,
     private val settingsDataUpdateInteractor: SettingsDataUpdateInteractor,
     private val themeChangedInteractor: ThemeChangedInteractor,
     private val settingsAdvancedOptionsUpdateInteractor: SettingsAdvancedOptionsUpdateInteractor,
 ) : BaseViewModel(), SettingsParent {
+
+    val section = savedState.getLiveData<String?>("settingsSection", null)
+
+    fun openSection(value: String?) {
+        savedState["settingsSection"] = value
+        viewModelScope.launch { updateContent() }
+    }
 
     val content: LiveData<List<ViewHolderType>> by lazySuspend { loadContent() }
     val resetScreen: SingleLiveEvent<Unit> = SingleLiveEvent()
@@ -72,7 +76,6 @@ class SettingsViewModel @Inject constructor(
         displayDelegate.clear()
         additionalDelegate.clear()
         ratingDelegate.clear()
-        translatorsDelegate.clear()
         backupDelegate.clear()
         exportDelegate.clear()
         super.onCleared()
@@ -178,7 +181,9 @@ class SettingsViewModel @Inject constructor(
     }
 
     override suspend fun updateContent() {
-        content.set(loadContent())
+        val requestedSection = section.value
+        val result = loadContent()
+        if (section.value == requestedSection) content.set(result)
         settingsAdvancedOptionsUpdateInteractor.send()
     }
 
@@ -189,17 +194,22 @@ class SettingsViewModel @Inject constructor(
     }
 
     private suspend fun loadContent(): List<ViewHolderType> {
-        val result = mutableListOf<ViewHolderType>()
-        result += mainDelegate.getViewData()
-        result += ratingDelegate.getViewData()
-        result += notificationsDelegate.getViewData()
-        result += displayDelegate.getViewData()
-        result += additionalDelegate.getViewData()
-        result += backupDelegate.getViewData()
-        result += exportDelegate.getViewData()
-        result += translatorsDelegate.getViewData()
-        result += contributorsDelegate.getViewData()
-        return result
+        fun List<ViewHolderType>.rows() = filterNot {
+            it is com.example.util.simpletimetracker.feature_settings.views.SettingsTopViewData ||
+                it is com.example.util.simpletimetracker.feature_settings.views.SettingsBottomViewData ||
+                it is com.example.util.simpletimetracker.feature_settings.views.SettingsCollapseViewData
+        }
+        fun List<ViewHolderType>.only(vararg blocks: SettingsBlock) = filter { item -> blocks.any { item.getUniqueId() == it.ordinal.toLong() } }
+        return when (section.value) {
+            "activities" -> mainDelegate.getViewData().only(SettingsBlock.Categories, SettingsBlock.Archive) +
+                additionalDelegate.getViewData(true).only(SettingsBlock.AdditionalShortcuts)
+            "reminders" -> notificationsDelegate.getViewData(true).rows()
+            "appearance" -> mainDelegate.getViewData().only(SettingsBlock.DarkMode, SettingsBlock.Language) + displayDelegate.getViewData(true).rows()
+            "data" -> exportDelegate.getViewData() + backupDelegate.getViewData()
+            "advanced" -> additionalDelegate.getViewData(true).rows().filterNot { it.getUniqueId() == SettingsBlock.AdditionalShortcuts.ordinal.toLong() }
+            "about" -> ratingDelegate.getViewData().rows()
+            else -> emptyList()
+        }
     }
 
     companion object {

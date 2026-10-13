@@ -1,5 +1,12 @@
 package com.example.util.simpletimetracker.feature_settings.view
 
+import androidx.activity.OnBackPressedCallback
+import androidx.core.view.isVisible
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -48,6 +55,19 @@ class SettingsFragment :
     lateinit var mainTabsViewModelFactory: BaseViewModelFactory<MainTabsViewModel>
 
     private val viewModel: SettingsViewModel by viewModels()
+    private val fullBackupModel: com.example.util.simpletimetracker.feature_settings.viewModel.FullBackupViewModel by viewModels()
+    private val fullBackup = FullBackupController(this) { fullBackupModel }
+    private val cloudBackupModel: com.example.util.simpletimetracker.feature_settings.viewModel.CloudBackupViewModel by viewModels()
+    private val cloudBackup = CloudBackupController(this) { cloudBackupModel }
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        fullBackup.restoreState(savedInstanceState)
+    }
+    override fun onSaveInstanceState(outState: android.os.Bundle) {
+        super.onSaveInstanceState(outState)
+        fullBackup.saveState(outState)
+    }
     private val mainTabsViewModel: MainTabsViewModel by activityViewModels { mainTabsViewModelFactory }
 
     private val contentAdapter: BaseRecyclerAdapter by lazy {
@@ -60,15 +80,63 @@ class SettingsFragment :
         )
     }
 
+    private val sectionBack = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            viewModel.openSection(null)
+        }
+    }
+
     override fun initUi() = with(binding) {
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, sectionBack)
+        settingsBack.setOnClickListener { viewModel.openSection(null) }
+        settingsActivities.setOnClickListener { viewModel.openSection("activities") }
+        settingsReminders.setOnClickListener { viewModel.openSection("reminders") }
+        settingsAppearance.setOnClickListener { viewModel.openSection("appearance") }
+        settingsData.setOnClickListener { viewModel.openSection("data") }
+        settingsAdvanced.setOnClickListener { viewModel.openSection("advanced") }
+        settingsAbout.setOnClickListener { viewModel.openSection("about") }
+        settingsHelp.setOnClickListener {
+            MaterialAlertDialogBuilder(requireContext()).setTitle("从这里开始")
+                .setMessage("现在：点活动开始，点运行卡停止，也可使用停止和编辑按钮。\n\n时间：点色块编辑，点过去的空档补记。非整段时间先保留为待整理。\n\n详情：评分、照片和情境都可跳过；点击保存后生效。\n\n回顾：看时间与体验，选择下周想保留或调整的事。\n\n数据：完整 ZIP 含照片，可用于恢复；CSV 和 ICS 不能代替完整备份。")
+                .setPositiveButton("知道了", null).show()
+        }
+        settingsLicense.setOnClickListener {
+            viewLifecycleOwner.lifecycleScope.launch {
+                val license = withContext(Dispatchers.IO) { requireContext().assets.open("life-clock-license.txt").bufferedReader().use { it.readText() } }
+                MaterialAlertDialogBuilder(requireContext()).setTitle("项目来源与开源许可")
+                    .setMessage("生活时间钟基于 Simple Time Tracker 修改。\n上游：github.com/Razeeman/Android-SimpleTimeTracker\n许可：GNU GPL v3 或更新版本。发布源码随安装包交付。\n\n" + license)
+                    .setPositiveButton("关闭", null).show()
+            }
+        }
         rvSettingsContent.adapter = contentAdapter
         rvSettingsContent.itemAnimator = null
     }
 
     override fun initViewModel(): Unit = with(binding) {
+        fullBackup.bind(lifeClockBackupButton)
+        cloudBackup.bind(lifeClockCloudBackupButton)
         viewModel.content.observe(contentAdapter::replaceAsNew)
+        viewModel.section.observe { section ->
+            settingsHome.isVisible = section == null
+            settingsSection.isVisible = section != null
+            settingsBack.isVisible = section != null
+            sectionBack.isEnabled = section != null && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
+            settingsBackupActions.isVisible = section == "data"
+            settingsAboutContent.isVisible = section == "about"
+            settingsSectionTitle.text = when (section) {
+                "activities" -> "活动与模板"
+                "reminders" -> "提醒与计时"
+                "appearance" -> "外观与显示"
+                "data" -> "数据与备份"
+                "advanced" -> "高级设置"
+                "about" -> "关于与帮助"
+                else -> "设置"
+            }
+            settingsSection.scrollTo(0, 0)
+        }
         viewModel.resetScreen.observe {
             rvSettingsContent.smoothScrollToPosition(0)
+            viewModel.openSection(null)
             viewModel.onResetScreen()
             mainTabsViewModel.onHandled()
         }
@@ -82,10 +150,12 @@ class SettingsFragment :
 
     override fun onResume() {
         super.onResume()
+        sectionBack.isEnabled = viewModel.section.value != null
         viewModel.onVisible()
     }
 
     override fun onPause() {
+        sectionBack.isEnabled = false
         viewModel.onHidden()
         super.onPause()
     }

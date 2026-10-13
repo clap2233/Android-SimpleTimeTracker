@@ -11,7 +11,6 @@ import com.example.util.simpletimetracker.feature_settings.mapper.SettingsMapper
 import com.example.util.simpletimetracker.feature_settings.viewData.DarkModeViewData
 import com.example.util.simpletimetracker.feature_settings.viewData.LanguageViewData
 import com.example.util.simpletimetracker.feature_settings.views.SettingsBottomViewData
-import com.example.util.simpletimetracker.feature_settings.views.SettingsCheckboxViewData
 import com.example.util.simpletimetracker.feature_settings.views.SettingsSpinnerViewData
 import com.example.util.simpletimetracker.feature_settings.views.SettingsTextViewData
 import com.example.util.simpletimetracker.feature_settings.views.SettingsTopViewData
@@ -29,13 +28,6 @@ class SettingsMainViewDataInteractor @Inject constructor(
 
         result += SettingsTopViewData(
             block = SettingsBlock.MainTop,
-        )
-
-        result += SettingsCheckboxViewData(
-            block = SettingsBlock.AllowMultitasking,
-            title = resourceRepo.getString(R.string.settings_allow_multitasking),
-            subtitle = resourceRepo.getString(R.string.settings_allow_multitasking_hint),
-            isChecked = prefsInteractor.getAllowMultitasking(),
         )
 
         val darkModeViewData = loadDarkModeViewData()

@@ -42,34 +42,9 @@ class RunningRecordsViewDataMapper @Inject constructor(
     fun mapToEmpty(
         startTimersByLongClick: Boolean,
     ): ViewHolderType {
-        val titleResId = if (!startTimersByLongClick) {
-            R.string.running_records_empty
-        } else {
-            R.string.running_records_empty_inverted
-        }
-        val hintResId = if (!startTimersByLongClick) {
-            R.string.running_records_empty_hint
-        } else {
-            R.string.running_records_empty_hint_inverted
-        }
         return EmptyViewData(
-            message = resourceRepo.getString(titleResId),
-            hint = resourceRepo.getString(hintResId),
-        )
-    }
-
-    fun mapToHasRunningRecords(
-        startTimersByLongLick: Boolean,
-    ): ViewHolderType {
-        val resId = if (!startTimersByLongLick) {
-            R.string.running_records_has_timers
-        } else {
-            R.string.running_records_has_timers_inverted
-        }
-        return HintViewData(
-            text = resourceRepo.getString(resId),
-            paddingTop = 0,
-            paddingBottom = 0,
+            message = "此刻还没有计时",
+            hint = if (startTimersByLongClick) "长按活动，开始记录" else "轻点活动，开始记录",
         )
     }
 

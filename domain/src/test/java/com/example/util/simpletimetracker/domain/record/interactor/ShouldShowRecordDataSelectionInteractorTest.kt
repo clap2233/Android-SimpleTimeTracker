@@ -28,6 +28,7 @@ internal class ShouldShowRecordDataSelectionInteractorTest {
     private val recordTagInteractor: RecordTagInteractor = mock()
     private val currentTimestampProvider: CurrentTimestampProvider = mock()
     private val processRulesInteractor: ProcessRulesInteractor = mock()
+    private val settingsRepo: com.example.util.simpletimetracker.domain.lifeClock.repo.LifeClockSettingsRepo = mock()
 
     private val subject = ShouldShowRecordDataSelectionInteractor(
         prefsInteractor = prefsInteractor,
@@ -36,12 +37,14 @@ internal class ShouldShowRecordDataSelectionInteractorTest {
         recordTagInteractor = recordTagInteractor,
         currentTimestampProvider = currentTimestampProvider,
         processRulesInteractor = processRulesInteractor,
+        settingsRepo = settingsRepo,
     )
 
     private val currentTimestamp = 1_234_567L
 
     @Before
     fun setUp(): Unit = runBlocking {
+        whenever(settingsRepo.getOrCreate()).thenReturn(com.example.util.simpletimetracker.domain.lifeClock.model.LifeClockSettings("test", 901L, 902L))
         whenever(currentTimestampProvider.get()).thenReturn(currentTimestamp)
         whenever(prefsInteractor.getRetroactiveTrackingMode()).thenReturn(false)
     }
@@ -141,6 +144,23 @@ internal class ShouldShowRecordDataSelectionInteractorTest {
             valueType = valueType,
             valueSuffix = "",
         )
+    }
+
+    @Test
+    fun builtInRatingsNeverBecomeRequiredStartFieldsOrInheritedValues(): Unit = runBlocking {
+        val rulesResult = ComplexRuleProcessActionInteractor.Result(
+            isMultitaskingAllowed = ResultContainer.Undefined, disallowOnlyPreviousTypeIds = emptySet(),
+            tags = listOf(recordBaseTag(901, 4.0)), tagIdsToSelectValueOnStart = setOf(901, 902),
+        )
+        whenever(prefsInteractor.getShowRecordTagSelection()).thenReturn(true)
+        whenever(prefsInteractor.getRecordTagSelectionExcludeActivities()).thenReturn(emptyList())
+        whenever(getSelectableTagsInteractor.execute(1L)).thenReturn(listOf(recordTag(901, RecordTagValueType.NUMERIC)))
+        whenever(processRulesInteractor.getRulesResultForStart(any(), any(), any(), any())).thenReturn(rulesResult)
+        whenever(processRulesInteractor.getAllTags(any(), any(), any())).thenReturn(rulesResult.tags)
+        val result = subject.execute(1, false)
+        assertEquals(emptyList<RecordDataSelectionDialogResult.Field>(), result.fields)
+        assertEquals(emptyList<Long>(), result.requiredValueSelectionTagIds)
+        assertEquals(emptyList<RecordBase.Tag>(), result.preselectedTags)
     }
 
     private fun recordBaseTag(tagId: Long, numericValue: Double?): RecordBase.Tag {

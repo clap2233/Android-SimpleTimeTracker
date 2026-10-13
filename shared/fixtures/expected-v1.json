@@ -1,0 +1,47 @@
+{
+  "weekStart": 1791129600000,
+  "cutoff": 1791252000000,
+  "elapsedMs": 122400000,
+  "recordedUnionMs": 7060000,
+  "unrecordedMs": 115340000,
+  "confirmedMs": 5400000,
+  "pendingMs": 760000,
+  "runningMs": 900000,
+  "confirmedEventCount": 4,
+  "confirmedByType": {
+    "1": 1800000,
+    "2": 1800000,
+    "0": 900000,
+    "4": 900000
+  },
+  "happiness": {
+    "distribution": [
+      0,
+      0,
+      0,
+      2,
+      0
+    ],
+    "ratedCount": 2,
+    "unratedCount": 2
+  },
+  "meaning": {
+    "distribution": [
+      0,
+      0,
+      1,
+      0,
+      1
+    ],
+    "ratedCount": 2,
+    "unratedCount": 2
+  },
+  "dailyConfirmedMs": [
+    900000,
+    4500000
+  ],
+  "combinedTagFilterIds": [
+    "2"
+  ],
+  "combinedTagFilterMs": 1800000
+}

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="reviewGrid" type="id" />
+    <item name="reviewRecords" type="id" />
+    <item name="reviewPleasant" type="id" />
+    <item name="reviewAbundance" type="id" />
+    <item name="reviewKeep" type="id" />
+    <item name="reviewAdjust" type="id" />
+    <item name="reviewSave" type="id" />
+    <item name="reviewPins" type="id" />
+    <item name="reviewTrial" type="id" />
+</resources>

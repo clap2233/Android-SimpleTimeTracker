@@ -208,6 +208,14 @@ class RunningRecordsViewModel @Inject constructor(
         }
     }
 
+    fun stopFromButton(item: RunningRecordViewData) {
+        viewModelScope.launch { onRunningRecordStop(item) }
+    }
+
+    fun editFromButton(item: RunningRecordViewData, sharedElements: Pair<Any, String>) {
+        viewModelScope.launch { onRunningRecordEdit(item, sharedElements) }
+    }
+
     private suspend fun onRunningRecordStop(
         item: RunningRecordViewData,
     ) {

@@ -11,9 +11,13 @@ import timber.log.Timber.DebugTree
 @HiltAndroidApp
 class TimeTrackerApp : Application() {
 
+    @javax.inject.Inject
+    lateinit var fullBackupRepo: com.example.util.simpletimetracker.domain.backup.repo.FullBackupRepo
+
     override fun onCreate() {
         super.onCreate()
         initLog()
+        kotlinx.coroutines.runBlocking { fullBackupRepo.recoverInterruptedRestore() }
         initLibraries()
         initStrictMode()
     }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="life_clock_happiness_entry">快乐评分</string>
+    <string name="life_clock_meaning_entry">意义评分</string>
+    <string name="life_clock_happiness_entry_value">快乐评分\n%1$s</string>
+    <string name="life_clock_meaning_entry_value">意义评分\n%1$s</string>
+    <string name="life_clock_unrated">未评分</string>
+    <string name="life_clock_photo_entry">照片\n添加或查看</string>
+    <string name="life_clock_more_details_entry">摘要 · 人物 · 环境</string>
+    <string name="life_clock_entry_optional">均可跳过，修改后点击保存。</string>
+</resources>

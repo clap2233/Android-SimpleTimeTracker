@@ -1,0 +1,23 @@
+[Unit]
+Description=Life Clock private backup and read-only web
+After=network.target
+
+[Service]
+Type=simple
+User=lifeclock
+Group=lifeclock
+WorkingDirectory=/opt/life-clock/app
+EnvironmentFile=/etc/life-clock/service.env
+ExecStart=/usr/bin/flock --no-fork --nonblock /var/lib/life-clock/writer.lock /opt/life-clock/node/bin/node dist/server/main.js
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/life-clock
+MemoryMax=2G
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

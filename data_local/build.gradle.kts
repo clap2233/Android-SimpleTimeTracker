@@ -23,6 +23,7 @@ dependencies {
 
     implementation(libs.androidx.room)
     implementation(libs.ktx.room)
+    implementation(libs.google.gson)
 
     ksp(libs.kapt.room)
     ksp(libs.kapt.dagger)

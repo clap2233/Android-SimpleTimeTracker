@@ -35,20 +35,12 @@ class RecordsShortcutsViewDataInteractorImpl @Inject constructor(
     ): List<RecordShortcutViewData> {
         val shortcuts = recordShortcutInteractor.getAll()
 
-        val runningRecordsProcessed = runningRecords.map { runningRecord ->
-            runningRecord.copy(tags = runningRecord.tags.sortedBy { it.tagId })
-        }
-
         return shortcuts.let {
             activityFilterViewDataInteractor.applyFilterToShortcuts(it, filter)
         }.map { shortcut ->
-            val isFiltered = when (val target = shortcut.target) {
+            val isFiltered = when (shortcut.target) {
                 is RecordShortcut.Target.Record -> {
-                    runningRecordsProcessed.any { runningRecord ->
-                        runningRecord.id == target.typeId &&
-                            runningRecord.comment == target.comment &&
-                            runningRecord.tags == target.tags.sortedBy { it.tagId }
-                    }
+                    runningRecords.any { it.templateId == shortcut.id }
                 }
                 is RecordShortcut.Target.Setting -> false
             }

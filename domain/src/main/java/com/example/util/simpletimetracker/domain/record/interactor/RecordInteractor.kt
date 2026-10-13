@@ -7,10 +7,15 @@ import com.example.util.simpletimetracker.domain.record.repo.RecordRepo
 import com.example.util.simpletimetracker.domain.record.model.RunningRecord
 import com.example.util.simpletimetracker.domain.recordTag.repo.RecordToRecordTagRepo
 import javax.inject.Inject
+import com.example.util.simpletimetracker.domain.record.repo.RecordMutationRepo
+import com.example.util.simpletimetracker.domain.record.repo.RecordMutationFeedback
+import com.example.util.simpletimetracker.domain.record.model.RecordMutationException
 
 class RecordInteractor @Inject constructor(
     private val recordRepo: RecordRepo,
     private val recordToRecordTagRepo: RecordToRecordTagRepo,
+    private val mutations: RecordMutationRepo,
+    private val feedback: RecordMutationFeedback,
 ) {
 
     suspend fun isEmpty(): Boolean {
@@ -94,9 +99,16 @@ class RecordInteractor @Inject constructor(
         }
     }
 
-    suspend fun add(record: Record) {
-        val recordId = recordRepo.add(record)
-        updateTags(recordId, record.tags)
+    suspend fun add(record: Record): Boolean = addAll(listOf(record))
+
+    suspend fun addAll(records: List<Record>): Boolean {
+        return try {
+            mutations.save(records)
+            true
+        } catch (error: RecordMutationException) {
+            feedback.show(error.reason)
+            false
+        }
     }
 
     suspend fun update(
@@ -105,19 +117,12 @@ class RecordInteractor @Inject constructor(
         comment: String,
         tags: List<RecordBase.Tag>,
     ) {
-        recordRepo.update(
-            recordId = recordId,
-            typeId = typeId,
-            comment = comment,
-        )
-        updateTags(recordId, tags)
+        get(recordId)?.copy(typeId = typeId, comment = comment, tags = tags)?.let { add(it) }
     }
 
     suspend fun updateTimeEnded(recordId: Long, timeEnded: Long) {
-        recordRepo.updateTimeEnded(
-            recordId = recordId,
-            timeEnded = timeEnded,
-        )
+        get(recordId)?.copy(timeEnded = timeEnded, reviewState = com.example.util.simpletimetracker.domain.record.model.RecordReviewState.PENDING)
+            ?.let { add(it) }
     }
 
     suspend fun remove(id: Long) {
@@ -128,14 +133,6 @@ class RecordInteractor @Inject constructor(
     suspend fun removeAll() {
         recordToRecordTagRepo.clear()
         recordRepo.clear()
-    }
-
-    private suspend fun updateTags(
-        recordId: Long,
-        tags: List<RecordBase.Tag>,
-    ) {
-        recordToRecordTagRepo.removeAllByRecordId(recordId)
-        recordToRecordTagRepo.addRecordTags(recordId, tags)
     }
 
     sealed interface GetParam {

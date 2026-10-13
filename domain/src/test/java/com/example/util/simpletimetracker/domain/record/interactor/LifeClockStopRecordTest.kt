@@ -5,6 +5,8 @@ import com.example.util.simpletimetracker.domain.record.model.RecordBase
 import com.example.util.simpletimetracker.domain.record.model.RecordReviewState
 import com.example.util.simpletimetracker.domain.record.model.RunningRecord
 import com.example.util.simpletimetracker.domain.record.repo.RecordRepo
+import com.example.util.simpletimetracker.domain.record.repo.RecordMutationRepo
+import com.example.util.simpletimetracker.domain.record.repo.RecordMutationFeedback
 import com.example.util.simpletimetracker.domain.recordTag.repo.RecordToRecordTagRepo
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -21,7 +23,8 @@ class LifeClockStopRecordTest {
     fun stoppingKeepsActualTimeAndMetadataWithoutInventingAScore() = runBlocking {
         val records = mock<RecordRepo>()
         val tags = mock<RecordToRecordTagRepo>()
-        whenever(records.add(any())).thenReturn(91)
+        val mutations = mock<RecordMutationRepo>()
+        whenever(mutations.save(any())).thenReturn(listOf(91))
         val running = RunningRecord(
             id = 2,
             timeStarted = 1_700_000_000_123,
@@ -33,10 +36,10 @@ class LifeClockStopRecordTest {
         )
         val endedAt = running.timeStarted + 760_123
 
-        RecordInteractor(records, tags).addFromRunning(running, endedAt)
+        RecordInteractor(records, tags, mutations, mock<RecordMutationFeedback>()).addFromRunning(running, endedAt)
 
-        val stored = argumentCaptor<Record>()
-        verify(records).add(stored.capture())
+        val stored = argumentCaptor<List<Record>>()
+        verify(mutations).save(stored.capture())
         assertEquals(
             Record(
                 typeId = running.id,
@@ -49,8 +52,7 @@ class LifeClockStopRecordTest {
                 templateId = running.templateId,
                 reviewState = RecordReviewState.PENDING,
             ),
-            stored.firstValue,
+            stored.firstValue.single(),
         )
-        verify(tags).addRecordTags(91, running.tags)
     }
 }
