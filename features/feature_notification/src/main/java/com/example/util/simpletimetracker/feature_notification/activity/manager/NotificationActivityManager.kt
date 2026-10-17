@@ -44,7 +44,7 @@ class NotificationActivityManager @Inject constructor(
     fun show(params: NotificationActivityParams) {
         val notification: Notification = buildNotification(params)
         createAndroidNotificationChannel()
-        notificationManager.notify(NOTIFICATION_TAG, NOTIFICATION_ID, notification)
+        try { notificationManager.notify(NOTIFICATION_TAG, NOTIFICATION_ID, notification) } catch (_: SecurityException) { }
     }
 
     fun hide() {
@@ -69,6 +69,12 @@ class NotificationActivityManager @Inject constructor(
             .setContentTitle(params.title)
             .setContentText(params.subtitle)
             .setSmallIcon(R.drawable.ic_notification)
+            .apply { params.sessionId?.let { id ->
+                val mute = Intent(context, com.example.util.simpletimetracker.feature_notification.recevier.NotificationReceiver::class.java)
+                    .setAction("app.lifetimeclock.MUTE_REMINDER").putExtra("timerSessionId", id)
+                    .setData(android.net.Uri.parse("lifeclock:mute/${android.net.Uri.encode(id)}"))
+                addAction(0, "关闭本次提醒", PendingIntent.getBroadcast(context, 5833, mute, PendingIntents.getFlags()))
+            } }
             .setContentIntent(contentIntent)
             .setCustomContentView(notificationLayout)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())

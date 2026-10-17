@@ -28,4 +28,6 @@ data class RunningRecordDBO(
 
     @ColumnInfo(name = "template_id")
     val templateId: Long? = null,
+    @ColumnInfo(name = "timer_session")
+    val timerSession: String? = null,
 )

@@ -15,10 +15,11 @@ class NotificationControlsMapper @Inject constructor() {
     fun mapExtraToFrom(
         extra: Int,
         recordTypeId: Long,
+        sessionId: String? = null,
     ): NotificationControlsManager.From? {
         return when (extra) {
-            1 -> NotificationControlsManager.From.ActivityNotification(recordTypeId)
-            2 -> NotificationControlsManager.From.ActivitySwitch
+            1 -> NotificationControlsManager.From.ActivityNotification(recordTypeId, sessionId)
+            2 -> NotificationControlsManager.From.ActivitySwitch(sessionId)
             else -> null
         }
     }

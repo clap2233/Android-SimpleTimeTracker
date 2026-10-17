@@ -71,6 +71,7 @@ class NotificationTypeManager @Inject constructor(
             context = context,
             requestCode = params.id.toInt(),
             recordTypeId = params.id,
+            sessionId = params.sessionId,
         )
         val cancelIntent = getCancelIntent(
             context = context,
@@ -140,7 +141,7 @@ class NotificationTypeManager @Inject constructor(
             }
 
             controlsManager.getControlsView(
-                from = NotificationControlsManager.From.ActivityNotification(params.id),
+                from = NotificationControlsManager.From.ActivityNotification(params.id, params.sessionId),
                 controls = params.controls,
                 isBig = isBig,
             )?.let {
@@ -153,9 +154,12 @@ class NotificationTypeManager @Inject constructor(
         context: Context,
         requestCode: Int,
         recordTypeId: Long,
+        sessionId: String?,
     ): PendingIntent {
         val intent = Intent(context, NotificationReceiver::class.java)
         intent.action = ACTION_NOTIFICATION_TYPE_STOP
+        intent.data = android.net.Uri.parse("lifeclock:stop/${android.net.Uri.encode(sessionId.orEmpty())}")
+        intent.putExtra("timerSessionId", sessionId)
         intent.putExtra(ARGS_TYPE_ID, recordTypeId)
         return PendingIntent.getBroadcast(
             context,

@@ -18,7 +18,6 @@ class RecordMutationFeedbackImpl @Inject constructor(
             RecordMutationError.EMPTY_INTERVAL -> R.string.life_clock_empty_interval
             RecordMutationError.FUTURE_TIME -> R.string.life_clock_future_time
             RecordMutationError.OVERLAP -> R.string.life_clock_overlap
-            RecordMutationError.NOT_QUARTER_HOUR -> R.string.life_clock_not_quarter
             RecordMutationError.MULTIPLE_RUNNING -> R.string.life_clock_multiple_running
             RecordMutationError.GAP -> R.string.life_clock_gap
             RecordMutationError.TAG_CONFLICT -> R.string.life_clock_tag_conflict

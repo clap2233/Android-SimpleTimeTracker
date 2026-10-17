@@ -169,7 +169,7 @@ class LifeClockRecordDetailsTest {
             for (id in 1L..2L) db.recordTypeDao().insert(RecordTypeDBO(id, "type $id", "", 0, "", false, defaultDuration = 0, note = ""))
             val runningMapper = RunningRecordDataLocalMapper()
             val mutations = RecordMutationRepoImpl(
-                db, RecordRepoImpl(db.recordDao(), mapper), RunningRecordRepoImpl(db.runningRecordDao(), runningMapper),
+                db, RecordRepoImpl(db.recordDao(), db, mapper), RunningRecordRepoImpl(db.runningRecordDao(), db, runningMapper),
                 mapper, runningMapper, RecordToRecordTagDataLocalMapper(), RunningRecordToRecordTagDataLocalMapper(), RecordTimeValidator(), CurrentTimestampProvider(),
             )
             block(db, mutations, RecordPhotoRepoImpl(context, db))

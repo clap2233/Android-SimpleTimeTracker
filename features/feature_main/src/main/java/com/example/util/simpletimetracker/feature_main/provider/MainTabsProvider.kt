@@ -44,6 +44,7 @@ class MainTabsProvider @Inject constructor(
     fun mapPositionToLabel(position: Int): String? = when (mapPositionToTab(position)) {
         NavigationTab.RunningRecords -> "现在"
         NavigationTab.Records -> "时间"
+        NavigationTab.Planning -> "规划"
         NavigationTab.Statistics -> "回顾"
         NavigationTab.Settings -> "设置"
         NavigationTab.Goals -> "目标"
@@ -59,6 +60,7 @@ class MainTabsProvider @Inject constructor(
         return when (tab) {
             NavigationTab.RunningRecords -> R.drawable.life_clock_ui2_nav_now
             NavigationTab.Records -> R.drawable.life_clock_ui2_nav_time
+            NavigationTab.Planning -> R.drawable.life_clock_ui2_nav_time
             NavigationTab.Statistics -> R.drawable.life_clock_ui2_nav_review
             NavigationTab.Settings -> R.drawable.life_clock_ui2_nav_settings
             NavigationTab.Goals -> R.drawable.tab_goals
@@ -70,6 +72,7 @@ class MainTabsProvider @Inject constructor(
         return when (tab) {
             NavigationTab.RunningRecords -> R.string.shortcut_navigation_timers
             NavigationTab.Records -> R.string.shortcut_navigation_records
+            NavigationTab.Planning -> return "规划"
             NavigationTab.Statistics -> R.string.shortcut_navigation_statistics
             NavigationTab.Settings -> R.string.shortcut_navigation_settings
             NavigationTab.Goals -> R.string.change_record_type_goal_time_hint
@@ -90,6 +93,7 @@ class MainTabsProvider @Inject constructor(
         return listOfNotNull(
             NavigationTab.RunningRecords,
             NavigationTab.Records,
+            NavigationTab.Planning,
             NavigationTab.Statistics,
             NavigationTab.Settings,
         )

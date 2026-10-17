@@ -3,11 +3,10 @@
     <string name="life_clock_empty_interval">End time must be later than start time.</string>
     <string name="life_clock_future_time">This time has not happened yet.</string>
     <string name="life_clock_overlap">This interval overlaps another record. Adjust their boundary together.</string>
-    <string name="life_clock_not_quarter">Confirmation requires a positive multiple of 15 minutes. You can save it as pending.</string>
     <string name="life_clock_multiple_running">Existing timers overlap. Resolve them before starting another activity.</string>
     <string name="life_clock_gap">Only adjoining intervals can be combined. Assign the gap explicitly first.</string>
     <string name="life_clock_tag_conflict">Choose which numeric values to retain.</string>
-    <string name="life_clock_invalid_score">Happiness and meaning must be whole numbers from 1 to 5 or empty.</string>
+    <string name="life_clock_invalid_score">Happiness must be 1 to 5 and meaning −5 to +5, as whole numbers or empty.</string>
     <string name="life_clock_record_changed">The record has changed. Reopen it and try again.</string>
     <string name="life_clock_pending">Pending</string>
     <string name="life_clock_confirmed">Confirmed</string>

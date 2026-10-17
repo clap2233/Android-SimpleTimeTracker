@@ -9,11 +9,13 @@ import com.example.util.simpletimetracker.feature_notification.recordType.intera
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import com.example.util.simpletimetracker.domain.record.model.operationIdentity
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class NotificationTypeBroadcastController @Inject constructor(
+    private val running: com.example.util.simpletimetracker.domain.record.interactor.RunningRecordInteractor,
     private val notificationTypeInteractor: NotificationTypeInteractor,
     private val notificationActivitySwitchInteractor: NotificationActivitySwitchInteractor,
     private val activityStartStopFromBroadcastInteractor: ActivityStartStopFromBroadcastInteractor,
@@ -22,26 +24,32 @@ class NotificationTypeBroadcastController @Inject constructor(
 
     fun onActionActivityStop(
         typeId: Long,
+        expectedSessionId: String?,
     ) {
         if (typeId == 0L) return
         safeLaunch {
+            if (expectedSessionId == null || running.get(typeId)?.operationIdentity() != expectedSessionId) return@safeLaunch
             activityStartStopFromBroadcastInteractor.onActionActivityStop(
                 typeId = typeId,
+                expectedSessionId = expectedSessionId,
             )
         }
     }
 
     fun onActionTypeClick(
+        expectedSessionId: String?,
         from: Int,
         typeId: Long,
         selectedTypeId: Long,
         typesShift: Int,
     ) {
         safeLaunch {
+            if (expectedSessionId == null || (running.getAll().singleOrNull()?.operationIdentity() ?: "idle") != expectedSessionId) return@safeLaunch
             activityStartStopFromBroadcastInteractor.onActionTypeClick(
                 from = notificationControlsMapper.mapExtraToFrom(
                     extra = from,
                     recordTypeId = typeId,
+                    sessionId = expectedSessionId,
                 ) ?: return@safeLaunch,
                 selectedTypeId = selectedTypeId,
                 typesShift = typesShift,
@@ -50,6 +58,7 @@ class NotificationTypeBroadcastController @Inject constructor(
     }
 
     fun onActionTagClick(
+        expectedSessionId: String?,
         from: Int,
         typeId: Long,
         selectedTypeId: Long,
@@ -61,10 +70,12 @@ class NotificationTypeBroadcastController @Inject constructor(
         requiredValueSelectionTagIds: List<Long>,
     ) {
         safeLaunch {
+            if (expectedSessionId == null || (running.getAll().singleOrNull()?.operationIdentity() ?: "idle") != expectedSessionId) return@safeLaunch
             activityStartStopFromBroadcastInteractor.onActionTagClick(
                 from = notificationControlsMapper.mapExtraToFrom(
                     extra = from,
                     recordTypeId = typeId,
+                    sessionId = expectedSessionId,
                 ) ?: return@safeLaunch,
                 selectedTypeId = selectedTypeId,
                 tagId = tagId,
@@ -78,6 +89,7 @@ class NotificationTypeBroadcastController @Inject constructor(
     }
 
     fun onActionTagValueSave(
+        expectedSessionId: String?,
         from: Int,
         typeId: Long,
         selectedTypeId: Long,
@@ -90,10 +102,12 @@ class NotificationTypeBroadcastController @Inject constructor(
         requiredValueSelectionTagIds: List<Long>,
     ) {
         safeLaunch {
+            if (expectedSessionId == null || (running.getAll().singleOrNull()?.operationIdentity() ?: "idle") != expectedSessionId) return@safeLaunch
             activityStartStopFromBroadcastInteractor.onActionTagValueSave(
                 from = notificationControlsMapper.mapExtraToFrom(
                     extra = from,
                     recordTypeId = typeId,
+                    sessionId = expectedSessionId,
                 ) ?: return@safeLaunch,
                 selectedTypeId = selectedTypeId,
                 tagId = tagId,
@@ -108,6 +122,7 @@ class NotificationTypeBroadcastController @Inject constructor(
     }
 
     fun onRequestUpdate(
+        expectedSessionId: String?,
         from: Int,
         typeId: Long,
         selectedTypeId: Long,
@@ -120,10 +135,12 @@ class NotificationTypeBroadcastController @Inject constructor(
         requiredValueSelectionTagIds: List<Long>,
     ) {
         safeLaunch {
+            if (expectedSessionId == null || (running.getAll().singleOrNull()?.operationIdentity() ?: "idle") != expectedSessionId) return@safeLaunch
             activityStartStopFromBroadcastInteractor.onRequestUpdate(
                 from = notificationControlsMapper.mapExtraToFrom(
                     extra = from,
                     recordTypeId = typeId,
+                    sessionId = expectedSessionId,
                 ) ?: return@safeLaunch,
                 selectedTypeId = selectedTypeId,
                 selectedTags = selectedTags,

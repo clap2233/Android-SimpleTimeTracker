@@ -31,7 +31,7 @@ internal object SnapshotTextExport {
         fun score(row: JsonObject, name: String, field: String): String = SnapshotJson.objects(SnapshotJson.array(row, "tags"))
             .firstOrNull { SnapshotJson.text(it, "tagId") == SnapshotJson.text(ratings, name) }?.get(field)?.takeUnless(JsonElement::isJsonNull)?.asString.orEmpty()
         return buildString {
-            append("dataSetId,recordId,typeId,activity,timeStarted,timeEnded,durationMs,zoneId,state,summary,comment,people,environment,tags,happiness,meaning,happinessRatedAt,meaningRatedAt,photoCount\r\n")
+            append("dataSetId,recordId,typeId,activity,timeStarted,timeEnded,durationMs,zoneId,state,summary,comment,people,environment,tags,happiness,meaning,happinessRatedAt,meaningRatedAt,photoCount,recovery,combined\r\n")
             records(root).sortedBy { SnapshotJson.number(it, "timeStarted") }.forEach { row ->
                 val id = SnapshotJson.text(row, "id")
                 val started = SnapshotJson.number(row, "timeStarted")
@@ -49,6 +49,8 @@ internal object SnapshotTextExport {
                     if (id in repair) "NEEDS_REPAIR" else SnapshotJson.text(row, "reviewState", "PENDING"), SnapshotJson.text(row, "summary", ""), SnapshotJson.text(row, "comment", ""),
                     names("PERSON"), names("ENVIRONMENT"), names(null), score(row, "happinessTagId", "numericValue"), score(row, "meaningTagId", "numericValue"),
                     score(row, "happinessTagId", "ratedAt"), score(row, "meaningTagId", "ratedAt"), count.toString(),
+                    row.get("recovery")?.takeUnless(JsonElement::isJsonNull)?.asString.orEmpty(),
+                    score(row, "happinessTagId", "numericValue").toDoubleOrNull()?.let { h -> score(row, "meaningTagId", "numericValue").toDoubleOrNull()?.let { m -> (h + m).toInt().toString() } }.orEmpty(),
                 )
                 append(values.joinToString(",", transform = ::cell))
                 append("\r\n")

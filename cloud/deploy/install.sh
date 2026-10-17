@@ -22,6 +22,8 @@ sudo install -d -o lifeclock -g lifeclock -m 700 /var/lib/life-clock
 sudo /opt/life-clock/node/bin/node deploy/initialize-secrets.mjs
 sudo chown ubuntu:ubuntu /home/ubuntu/life-clock-connection.json
 sudo chmod 600 /home/ubuntu/life-clock-connection.json
+sudo chown ubuntu:ubuntu /home/ubuntu/life-clock-ai-connection.json
+sudo chmod 600 /home/ubuntu/life-clock-ai-connection.json
 sudo install -m 644 deploy/life-clock.service /etc/systemd/system/life-clock.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now life-clock.service

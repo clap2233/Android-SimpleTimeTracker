@@ -10,10 +10,14 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.room.withTransaction
+import com.example.util.simpletimetracker.data_local.database.AppDatabase
+import com.example.util.simpletimetracker.data_local.planning.PlanLinks
 
 @Singleton
 class RunningRecordRepoImpl @Inject constructor(
     private val dao: RunningRecordDao,
+    private val database: AppDatabase,
     private val mapper: RunningRecordDataLocalMapper,
 ) : RunningRecordRepo {
 
@@ -57,13 +61,13 @@ class RunningRecordRepoImpl @Inject constructor(
 
     override suspend fun remove(id: Long) = mutex.withLockedCache(
         logMessage = "remove",
-        accessSource = { dao.delete(id) },
+        accessSource = { database.withTransaction { dao.delete(id); PlanLinks.removeMissing(database) } },
         afterSourceAccess = { cache = cache?.removeIf { it.id == id } },
     )
 
     override suspend fun clear() = mutex.withLockedCache(
         logMessage = "clear",
-        accessSource = { dao.clear() },
+        accessSource = { database.withTransaction { dao.clear(); PlanLinks.removeMissing(database) } },
         afterSourceAccess = { cache = null },
     )
 

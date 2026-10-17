@@ -20,7 +20,7 @@ data class ReviewTimeBlock(
     val state: ReviewTimeState,
     val day: Int,
 )
-data class ReviewScores(val distribution: List<Int>, val unrated: Int) {
+data class ReviewScores(val distribution: List<Int>, val unrated: Int, val minimum: Int = 1) {
     val rated: Int get() = distribution.sum()
 }
 data class WeekReviewStats(
@@ -84,8 +84,7 @@ class WeekReviewCalculator @Inject constructor() {
         val future = weekRecords.filter { it.timeStarted >= cutoff && it.timeEnded > it.timeStarted }
         val repairs = weekRecords.filter {
             it.timeStarted < cutoff && (
-                it.timeEnded <= it.timeStarted || it.timeEnded > now ||
-                    (it.reviewState == RecordReviewState.CONFIRMED && it.duration % 900_000L != 0L)
+                it.timeEnded <= it.timeStarted || it.timeEnded > now
                 )
         }.mapTo(mutableSetOf()) { it.id }
         val active = runningRecords.filter { it.timeStarted < cutoff }
@@ -131,9 +130,9 @@ class WeekReviewCalculator @Inject constructor() {
             add(it.id, it.id, it.timeStarted, cutoff, ReviewTimeState.RUNNING)
         }
         val confirmedRecords = selected.filter { it.reviewState == RecordReviewState.CONFIRMED }
-        fun scores(id: Long): ReviewScores {
-            val values = confirmedRecords.map { rating(it, id) }
-            return ReviewScores((1..5).map { score -> values.count { it == score } }, values.count { it == null })
+        fun scores(id: Long, minimum: Int): ReviewScores {
+            val values = confirmedRecords.map { rating(it, id, minimum) }
+            return ReviewScores((minimum..5).map { score -> values.count { it == score } }, values.count { it == null }, minimum)
         }
         fun duration(state: ReviewTimeState) = blocks.filter { it.state == state }.sumOf { it.end - it.start }
         fun grouped(data: List<ReviewTimeBlock>) = data.groupBy { it.typeId }.mapValues { (_, values) -> values.sumOf { it.end - it.start } }
@@ -142,12 +141,12 @@ class WeekReviewCalculator @Inject constructor() {
             duration(ReviewTimeState.CONFIRMED), duration(ReviewTimeState.PENDING), duration(ReviewTimeState.RUNNING),
             grouped(blocks), grouped(blocks.filter { it.state == ReviewTimeState.CONFIRMED }),
             blocks, selected.sortedByDescending { it.timeStarted }, weekRecords.filter { it.id in repairs }, future,
-            scores(happinessId), scores(meaningId),
+            scores(happinessId, 1), scores(meaningId, -5),
         )
     }
 
-    fun rating(record: Record, id: Long): Int? = record.tags.firstOrNull { it.tagId == id }?.numericValue
-        ?.takeIf { it.isFinite() && it in 1.0..5.0 && it % 1.0 == 0.0 }?.toInt()
+    fun rating(record: Record, id: Long, minimum: Int = 1): Int? = record.tags.firstOrNull { it.tagId == id }?.numericValue
+        ?.takeIf { it.isFinite() && it in minimum.toDouble()..5.0 && it % 1.0 == 0.0 }?.toInt()
 
     fun comparisonRecords(records: List<Record>, now: Long): List<Record> {
         val overlaps = mutableSetOf<Long>()
@@ -160,8 +159,7 @@ class WeekReviewCalculator @Inject constructor() {
             if (furthest == null || record.timeEnded > requireNotNull(furthest).timeEnded) furthest = record
         }
         return records.filter {
-            it.id !in overlaps && it.duration > 0 && it.timeEnded <= now &&
-                (it.reviewState != RecordReviewState.CONFIRMED || it.duration % 900_000L == 0L)
+            it.id !in overlaps && it.duration > 0 && it.timeEnded <= now
         }
     }
 

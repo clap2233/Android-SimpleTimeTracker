@@ -67,6 +67,9 @@ import javax.inject.Inject
 class NotificationReceiver : BroadcastReceiver() {
 
     @Inject
+    lateinit var planningReminder: com.example.util.simpletimetracker.domain.planning.PlanningReminder
+
+    @Inject
     lateinit var typeController: NotificationTypeBroadcastController
 
     @Inject
@@ -95,11 +98,15 @@ class NotificationReceiver : BroadcastReceiver() {
         if (context == null || intent == null || action == null) return
 
         when (action) {
+            "app.lifetimeclock.MUTE_REMINDER" -> activityController.onMute(intent.getStringExtra("timerSessionId").orEmpty())
+            com.example.util.simpletimetracker.feature_notification.planning.PlanningReminderImpl.ACTION -> goAsync(finally = {}, block = {
+                planningReminder.show(intent.getStringExtra("occurrenceId").orEmpty(), intent.getLongExtra("start", 0))
+            })
             ACTION_INACTIVITY_REMINDER -> {
                 inactivityController.onInactivityReminder()
             }
             ACTION_ACTIVITY_REMINDER -> {
-                activityController.onActivityReminder()
+                activityController.onActivityReminder(intent.getStringExtra("timerSessionId"), intent.getLongExtra("scheduledAt", 0))
             }
             ACTION_POMODORO_REMINDER -> {
                 val cycleType = intent.getLongExtra(EXTRA_POMODORO_CYCLE_TYPE, 0)
@@ -241,11 +248,11 @@ class NotificationReceiver : BroadcastReceiver() {
             }
             ACTION_NOTIFICATION_TYPE_STOP -> {
                 val typeId = intent.getLongExtra(ARGS_TYPE_ID, 0)
-                typeController.onActionActivityStop(typeId)
+                typeController.onActionActivityStop(typeId, intent.getStringExtra("timerSessionId"))
             }
             ACTION_NOTIFICATION_CONTROLS_STOP -> {
                 val typeId = intent.getLongExtra(ARGS_TYPE_ID, 0)
-                typeController.onActionActivityStop(typeId)
+                typeController.onActionActivityStop(typeId, intent.getStringExtra("timerSessionId"))
             }
             ACTION_NOTIFICATION_CONTROLS_TYPE_CLICK -> {
                 val from = intent.getIntExtra(ARGS_CONTROLS_FROM, 0)
@@ -253,6 +260,7 @@ class NotificationReceiver : BroadcastReceiver() {
                 val selectedTypeId = intent.getLongExtra(ARGS_SELECTED_TYPE_ID, 0)
                 val typesShift = intent.getIntExtra(ARGS_TYPES_SHIFT, 0)
                 typeController.onActionTypeClick(
+                    expectedSessionId = intent.getStringExtra("timerSessionId"),
                     from = from,
                     typeId = typeId,
                     selectedTypeId = selectedTypeId,
@@ -278,6 +286,7 @@ class NotificationReceiver : BroadcastReceiver() {
                 val isMultipleTagAvailable = intent.getBooleanExtra(ARGS_MULTIPLE_TAG_AVAILABLE, false)
                 val requiredValueSelectionTagIds = intent.getRequiredValueSelectionTagIds()
                 typeController.onRequestUpdate(
+                    expectedSessionId = intent.getStringExtra("timerSessionId"),
                     from = from,
                     typeId = typeId,
                     selectedTypeId = selectedTypeId,
@@ -301,6 +310,7 @@ class NotificationReceiver : BroadcastReceiver() {
                 val isMultipleTagAvailable = intent.getBooleanExtra(ARGS_MULTIPLE_TAG_AVAILABLE, false)
                 val requiredValueSelectionTagIds = intent.getRequiredValueSelectionTagIds()
                 typeController.onActionTagClick(
+                    expectedSessionId = intent.getStringExtra("timerSessionId"),
                     from = from,
                     typeId = typeId,
                     selectedTypeId = selectedTypeId,
@@ -324,6 +334,7 @@ class NotificationReceiver : BroadcastReceiver() {
                 val isMultipleTagAvailable = intent.getBooleanExtra(ARGS_MULTIPLE_TAG_AVAILABLE, false)
                 val requiredValueSelectionTagIds = intent.getRequiredValueSelectionTagIds()
                 typeController.onActionTagValueSave(
+                    expectedSessionId = intent.getStringExtra("timerSessionId"),
                     from = from,
                     typeId = typeId,
                     selectedTypeId = selectedTypeId,

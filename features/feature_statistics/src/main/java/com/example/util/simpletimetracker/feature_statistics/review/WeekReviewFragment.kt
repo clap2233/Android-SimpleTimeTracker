@@ -173,7 +173,10 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
             zoneId = data.review.zoneId
             colors = data.types.associate { it.id to this@WeekReviewFragment.colors.mapToColorInt(it.color) }
             textColor = context.getThemedAttr(R.attr.appTextPrimaryColor)
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(630))
+            surfaceColor = context.getThemedAttr(R.attr.appCardBackgroundColor)
+            accentColor = context.getThemedAttr(R.attr.colorPrimary)
+            selectedDay = model.selectedDay
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(360))
             onBlock = { block ->
                 if (block.state == ReviewTimeState.RUNNING) {
                     navigator.openRunning(block.id)
@@ -204,23 +207,28 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
             val type = data.types.find { it.id == id }
             val pending = data.stats.blocks.filter { it.typeId == id && it.state == ReviewTimeState.PENDING }.sumOf { it.end - it.start }
             val running = data.stats.blocks.filter { it.typeId == id && it.state == ReviewTimeState.RUNNING }.sumOf { it.end - it.start }
-            val label = line("■ ${type?.name ?: "未分类"} · 已确认 ${duration(data.stats.confirmedByType[id] ?: 0)}\n待整理 ${duration(pending)} · 进行中 ${duration(running)}")
-            type?.let {
-                label.text = android.text.SpannableString(label.text).apply {
-                    setSpan(android.text.style.ForegroundColorSpan(colors.mapToColorInt(it.color)), 0, 1, 0)
-                }
-            }
+            val confirmed = data.stats.confirmedByType[id] ?: 0
             val total = data.stats.confirmed
-            if (total > 0) {
-                currentContainer().addView(
-                    android.widget.ProgressBar(requireContext(), null, android.R.attr.progressBarStyleHorizontal).apply {
-                        max = 1000
-                        progress = ((data.stats.confirmedByType[id] ?: 0).toDouble() / total * max).toInt()
-                        progressTintList = android.content.res.ColorStateList.valueOf(type?.let { colors.mapToColorInt(it.color) } ?: context.getThemedAttr(R.attr.appTextHintColor))
-                        progressBackgroundTintList = android.content.res.ColorStateList.valueOf(context.getThemedAttr(R.attr.appDividerColor))
-                        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(4)).apply { bottomMargin = dp(12) }
-                    },
-                )
+            val color = type?.let { colors.mapToColorInt(it.color) } ?: requireContext().getThemedAttr(R.attr.appTextHintColor)
+            val fraction = if (total > 0) confirmed.toFloat() / total else 0f
+            val row = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(10), 0, dp(6))
+            }
+            row.addView(View(requireContext()).apply {
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(color) }
+            }, LinearLayout.LayoutParams(dp(10), dp(10)).apply { marginEnd = dp(8) })
+            row.addView(chartText(type?.name ?: "未分类", 14f), LinearLayout.LayoutParams(0, -2, 1f))
+            row.addView(chartText(duration(confirmed), 14f).apply { gravity = Gravity.END }, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
+            currentContainer().addView(row)
+            currentContainer().addView(ReviewBarView(requireContext(), fraction, color, requireContext().getThemedAttr(R.attr.lifeClockSoftSurfaceColor)),
+                LinearLayout.LayoutParams(-1, dp(7)).apply { bottomMargin = dp(4) })
+            line("已确认 ${(fraction * 100).toInt()}%" +
+                (if (pending > 0) " · 待整理 ${duration(pending)}" else "") +
+                (if (running > 0) " · 进行中 ${duration(running)}" else "")).apply {
+                textSize = 12f
+                setTextColor(context.getThemedAttr(R.attr.appTextHintColor))
             }
         }
         button("查看本周经历（${data.stats.records.size}）", R.id.reviewRecords) { chooseRecord(data.stats.records, data) { showRecord(it, data) } }
@@ -254,6 +262,7 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
         line("仅统计本周已确认经历；跨夜经历只评分一次，未评分保持为空。")
         showScores("快乐", data.stats.happiness)
         showScores("意义", data.stats.meaning)
+        showRecoveryAndPlans(data)
         section("挑选值得记住的经历")
         showMemories("愉快", data.review.pleasantRecords)
         button("选择愉快经历", R.id.reviewPleasant) { selectMemories(data, true) }
@@ -319,30 +328,37 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
     }
 
     private fun showScores(name: String, scores: ReviewScores) {
-        line("$name：${scores.rated} 条已评分，${scores.unrated} 条未评分")
-        val row = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = dp(12)
-            }
-        }
+        line("$name").apply { typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL); textSize = 16f }
+        line("${scores.rated} 条已评分 · ${scores.unrated} 条未评分").apply { textSize = 12f; setTextColor(context.getThemedAttr(R.attr.appTextHintColor)) }
+        val maximum = scores.distribution.maxOrNull()?.coerceAtLeast(1) ?: 1
         scores.distribution.forEachIndexed { index, count ->
-            row.addView(
-                TextView(requireContext()).apply {
-                    text = "${index + 1}分\n$count"
-                    textSize = 13f
-                    gravity = Gravity.CENTER
-                    setTextColor(context.getThemedAttr(R.attr.appTextPrimaryColor))
-                    setLineSpacing(dp(5).toFloat(), 1f)
-                    setPadding(dp(2), dp(10), dp(2), dp(10))
-                    background = roundedSurface(R.attr.lifeClockSoftSurfaceColor, 14)
-                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-                        if (index > 0) marginStart = dp(4)
-                    }
-                },
-            )
+            val value = index + scores.minimum
+            val label = if (value > 0 && scores.minimum < 0) "+$value" else value.toString().replace('-', '−')
+            val color = when {
+                value < 0 -> if (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES) 0xffd8a28b.toInt() else 0xffa66c52.toInt()
+                value == 0 -> requireContext().getThemedAttr(R.attr.appTextHintColor)
+                else -> requireContext().getThemedAttr(R.attr.colorPrimary)
+            }
+            val row = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                minimumHeight = dp(30)
+                setPadding(0, dp(4), 0, dp(4))
+                contentDescription = "$name $value 分，$count 条经历"
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            }
+            row.addView(chartText("$label 分", 12f), LinearLayout.LayoutParams(dp(44), -2))
+            row.addView(ReviewBarView(requireContext(), count.toFloat() / maximum, color, requireContext().getThemedAttr(R.attr.lifeClockSoftSurfaceColor)), LinearLayout.LayoutParams(0, dp(7), 1f))
+            row.addView(chartText("$count 条", 12f).apply { gravity = Gravity.END }, LinearLayout.LayoutParams(dp(48), -2))
+            currentContainer().addView(row)
         }
-        currentContainer().addView(row)
+        if (scores.rated == 0) line("还没有已填写的$name 评分，空值没有计入分布。").apply { textSize = 12f }
+    }
+
+    private fun chartText(value: String, size: Float) = TextView(requireContext()).apply {
+        text = value
+        textSize = size
+        setTextColor(context.getThemedAttr(R.attr.appTextPrimaryColor))
     }
 
     private fun showMemories(name: String, references: List<ReviewRecordReference>) {
@@ -491,8 +507,45 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
         return "${model.caption(record, data)} · ${format.format(Date(record.timeStarted))}\n${duration(record.duration)} · ${if (record.reviewState == RecordReviewState.CONFIRMED) "已确认" else "待整理"} · ${scores(record, data)}"
     }
 
-    private fun scores(record: Record, data: WeekReviewScreen) =
-        "快乐 ${model.calculator.rating(record, data.identity.happinessTagId) ?: "未评分"} / 意义 ${model.calculator.rating(record, data.identity.meaningTagId) ?: "未评分"}"
+    private fun scores(record: Record, data: WeekReviewScreen): String {
+        val happy = model.calculator.rating(record, data.identity.happinessTagId)
+        val meaning = model.calculator.rating(record, data.identity.meaningTagId, -5)
+        val total = if (happy == null || meaning == null) "未计算" else (happy + meaning).let { if (it > 0) "+$it" else "$it" }
+        val recovery = when (record.recovery) {
+            com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_ENERGY -> "更有精神"
+            com.example.util.simpletimetracker.domain.rhythm.Recovery.UNCHANGED -> "差不多"
+            com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_TIRED -> "更累"
+            null -> "未填写"
+        }
+        return "快乐 ${happy ?: "未评分"} / 意义 ${meaning ?: "未评分"} / 合计 $total / 恢复感 $recovery"
+    }
+
+    private fun showRecoveryAndPlans(data: WeekReviewScreen) {
+        section("活动之后的恢复感")
+        fun counts(records: List<Record>): String {
+            val values = records.filter { it.reviewState == RecordReviewState.CONFIRMED }
+            return "更有精神 ${values.count { it.recovery == com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_ENERGY }} · 差不多 ${values.count { it.recovery == com.example.util.simpletimetracker.domain.rhythm.Recovery.UNCHANGED }} · 更累 ${values.count { it.recovery == com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_TIRED }} · 未填写 ${values.count { it.recovery == null }}"
+        }
+        line(counts(data.stats.records))
+        button("按模板查看恢复感") {
+            val templates = data.templates.filter { it.target is RecordShortcut.Target.Record }
+            show(AlertDialog.Builder(requireContext()).setTitle("选择模板")
+                .setItems(templates.map { (it.target as RecordShortcut.Target.Record).name.ifBlank { "模板 ${it.id}" } }.toTypedArray()) { _, index ->
+                    show(AlertDialog.Builder(requireContext()).setTitle("本周恢复感").setMessage(counts(data.stats.records.filter { it.templateId == templates[index].id })).setPositiveButton("关闭", null).create())
+                }.setNegativeButton("取消", null).create())
+        }
+        section("计划与实际经历")
+        line("计划与实际分开呈现，不将空白当作休息。这里不随人物／环境筛选变化。")
+        if (data.plans.isEmpty()) line("这周还没有计划时段。可以到「规划」给重要的事留位置。")
+        data.plans.forEach { plan ->
+            val links = data.planLinks.filter { it.occurrenceId == plan.id && it.recordId != null }
+            val actual = com.example.util.simpletimetracker.domain.planning.PlanCalendar.occupiedMillis(links.map { it.timeStarted to requireNotNull(it.timeEnded) }, Long.MIN_VALUE, Long.MAX_VALUE)
+            line("${plan.date} · ${plan.schedule.title} · ${if (plan.schedule.kind == com.example.util.simpletimetracker.domain.planning.PlanKind.BUFFER) "缓冲" else "计划"}\n预留 ${duration(plan.end - plan.start)} · 关联实际 ${duration(actual)}")
+            links.mapNotNull { link -> data.allRecords.find { it.id == link.recordId } }.distinctBy { it.id }.forEach { record ->
+                button(recordLabel(record, data)) { showRecord(record, data) }
+            }
+        }
+    }
 
     private fun editText(title: String, value: String, save: (String) -> Unit) {
         val input = EditText(requireContext()).apply {
@@ -606,6 +659,7 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
         this.id = id
         this.text = text
         isAllCaps = false
+        isEnabled = model.busy.value != true
         if (id != R.id.reviewSave) gravity = Gravity.START or Gravity.CENTER_VERTICAL
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             topMargin = dp(4)

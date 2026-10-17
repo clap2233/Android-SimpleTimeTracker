@@ -17,14 +17,14 @@ internal object SnapshotTables {
         "recordToRecordTag", "runningRecordToRecordTag", "recordShortcutToRecordTag", "recordPhotos", "reviewTrials",
         "activityFilters", "favouriteComments", "recordTypeToFavouriteComment", "recordTypeGoals", "favouriteIcons",
         "complexRules", "favouriteColors", "activitySuggestion", "durationSuggestions", "favouriteRecordFilters", "favouriteRecordFilter",
-    )
-    private val core = names.take(16).toSet()
+    ) + SnapshotV3.tables
+
 
     fun decode(root: JsonObject): Map<String, JsonArray> {
         SnapshotValidation.validate(root)
         val fromPublic = publicTables(root)
         val upstream = root.get("upstreamData")?.takeUnless(JsonElement::isJsonNull)?.asJsonObject ?: return fromPublic
-        require(SnapshotJson.number(upstream, "databaseVersion") in 36L..37L)
+        require(SnapshotJson.number(upstream, "databaseVersion") in 36L..38L)
         val raw = requireNotNull(upstream.getAsJsonObject("tables"))
         require(raw.keySet().all { it in names }) { "Unknown backup table" }
         val tables = names.associateWith { SnapshotJson.array(raw, it).deepCopy() }
@@ -151,6 +151,7 @@ internal object SnapshotTables {
         }
         val ratings = requireNotNull(root.getAsJsonObject("ratingTagIds"))
         add("lifeClockSettings", "id" to 1L, "data_set_id" to SnapshotJson.text(root, "dataSetId"), "happiness_tag_id" to id(ratings, "happinessTagId"), "meaning_tag_id" to id(ratings, "meaningTagId"))
+        SnapshotV3.decode(root, result)
         return result
     }
 
@@ -164,6 +165,7 @@ internal object SnapshotTables {
             val newId = ++lastId
             records.add(
                 active.deepCopy().apply {
+                    remove("timer_session")
                     addProperty("type_id", active.text("id"))
                     addProperty("id", newId.toString())
                     addProperty("time_ended", createdAt.toString())
@@ -182,6 +184,22 @@ internal object SnapshotTables {
                 it.addProperty("record_id", newId.toString())
                 it.add("running_record_id", com.google.gson.JsonNull.INSTANCE)
             }
+        }
+        result["planRecordLinks"] = JsonArray().apply {
+          SnapshotJson.objects(result["planRecordLinks"] ?: JsonArray()).forEach { row ->
+            val link = com.example.util.simpletimetracker.data_local.planning.PlanningJson.link(row.text("content_json"))
+            val runningId = link.runningRecordId
+            if (runningId != null) {
+                val oldRunning = SnapshotJson.objects(requireNotNull(tables["runningRecords"]))
+                val offset = oldRunning.indexOfFirst { it.long("id") == runningId }
+                require(offset >= 0)
+                val firstNewId = lastId - oldRunning.size + 1
+                if (createdAt <= link.timeStarted) return@forEach
+                val finished = link.copy(recordId = firstNewId + offset, runningRecordId = null, timeEnded = createdAt)
+                row.addProperty("content_json", com.example.util.simpletimetracker.data_local.planning.PlanningJson.encode(finished))
+            }
+            add(row)
+          }
         }
         result["runningRecords"] = JsonArray()
         result["runningRecordToRecordTag"] = JsonArray()

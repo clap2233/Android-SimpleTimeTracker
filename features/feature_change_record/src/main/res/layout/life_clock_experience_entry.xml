@@ -31,6 +31,10 @@
             android:layout_marginStart="6dp" android:text="@string/life_clock_meaning_entry"
             app:backgroundTint="?lifeClockAccentSurfaceColor" app:icon="@drawable/life_clock_ui2_meaning" />
     </LinearLayout>
+    <TextView android:id="@+id/lifeClockCombinedScore" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:padding="8dp" android:textSize="14sp" android:textColor="?appTextPrimaryColor" />
+    <com.google.android.material.button.MaterialButton android:id="@+id/lifeClockRecoveryButton" style="@style/LifeClockUi2DetailButton"
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:text="恢复感 · 未填写" />
     <com.google.android.material.button.MaterialButton
         android:id="@+id/lifeClockPhotosButton" style="@style/LifeClockUi2DetailButton"
         android:layout_width="match_parent" android:layout_height="wrap_content"

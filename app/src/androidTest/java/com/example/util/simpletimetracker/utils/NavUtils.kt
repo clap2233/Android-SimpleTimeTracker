@@ -60,14 +60,14 @@ object NavUtils {
     }
 
     fun openStatisticsScreen() {
-        onView(withId(mainR.id.mainTabs)).perform(selectTabAtPosition(2))
+        onView(withId(mainR.id.mainTabs)).perform(selectTabAtPosition(3))
         Thread.sleep(1000)
         onView(allOf(withId(com.example.util.simpletimetracker.feature_statistics.R.id.reviewStatistics), isDisplayed()))
             .perform(clickButtonWithText("详细统计"))
     }
 
     fun openReviewScreen() {
-        onView(withId(mainR.id.mainTabs)).perform(selectTabAtPosition(2))
+        onView(withId(mainR.id.mainTabs)).perform(selectTabAtPosition(3))
         Thread.sleep(1000)
         onView(allOf(withId(com.example.util.simpletimetracker.feature_statistics.R.id.reviewStatistics), isDisplayed()))
             .perform(clickButtonWithText("返回周回顾"))
@@ -83,7 +83,7 @@ object NavUtils {
     }
 
     fun openSettingsScreen() {
-        onView(withId(mainR.id.mainTabs)).perform(selectTabAtPosition(3))
+        onView(withId(mainR.id.mainTabs)).perform(selectTabAtPosition(4))
         Thread.sleep(1000)
     }
 

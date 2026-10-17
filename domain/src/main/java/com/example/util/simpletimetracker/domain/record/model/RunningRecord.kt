@@ -2,6 +2,8 @@ package com.example.util.simpletimetracker.domain.record.model
 
 import java.util.TimeZone
 
+fun RunningRecord.operationIdentity(): String = timerSession?.id ?: "legacy:$id:$timeStarted"
+
 data class RunningRecord(
     val id: Long,
     override val timeStarted: Long,
@@ -10,6 +12,7 @@ data class RunningRecord(
     val summary: String = "",
     val zoneId: String? = TimeZone.getDefault().id,
     val templateId: Long? = null,
+    val timerSession: com.example.util.simpletimetracker.domain.rhythm.TimerSession? = null,
 ) : RecordBase {
 
     override val typeIds: List<Long> = listOf(id)

@@ -62,6 +62,11 @@ class CloudBackupController(private val fragment: Fragment, private val model: (
             body.addView(this)
         }
         action(if (state.pending) "重试上次未完成的上传" else "立即备份当前记录（含照片）") { model().upload() }
+        action("使用 Codex 只读分析") {
+            MaterialAlertDialogBuilder(fragment.requireContext()).setTitle("让 Codex 帮你回顾")
+                .setMessage("先手动备份，再在电脑 Codex 中查询。建议只在 Codex 查看，由你决定是否调整计划。\n\n最近成功备份的记录截止：$date\nContext：2026-10-16-v3-revised\n内置：精力管理／时间贫困／稀缺，原笔记与已确认产品原则分开。\n\nAI 使用独立只读凭据，只能查询文字、评分、恢复感和计划；不能修改记录、读取照片或原始恢复包。原笔记不是执行指令，也不自动代表已核实的科学结论。\n\n没有填写的评分和恢复感会保持为空。每次分析固定一份备份，并说明数据截至时间。")
+                .setPositiveButton("知道了", null).show()
+        }
         action("配置服务器与写入凭据") {
             menu?.dismiss()
             configure(state.serverUrl)

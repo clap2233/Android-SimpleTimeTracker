@@ -25,8 +25,8 @@ class RecordRepeatInteractor @Inject constructor(
     private val resourceRepo: ResourceRepo,
 ) {
 
-    suspend fun repeat(): ActionResult {
-        return execute { messageResId ->
+    suspend fun repeat(expectedSessionId: String? = null): ActionResult {
+        return execute(expectedSessionId) { messageResId ->
             SnackBarParams(
                 message = resourceRepo.getString(messageResId),
                 duration = SnackBarParams.Duration.Short,
@@ -48,6 +48,7 @@ class RecordRepeatInteractor @Inject constructor(
     }
 
     private suspend fun execute(
+        expectedSessionId: String? = null,
         messageShower: (messageResId: Int) -> Unit,
     ): ActionResult {
         val type = prefsInteractor.getRepeatButtonType()
@@ -84,6 +85,7 @@ class RecordRepeatInteractor @Inject constructor(
             typeId = prevRecord.typeId,
             tags = prevRecord.tags,
             comment = prevRecord.comment,
+            expectedSessionId = expectedSessionId,
         )
         return ActionResult.Started
     }

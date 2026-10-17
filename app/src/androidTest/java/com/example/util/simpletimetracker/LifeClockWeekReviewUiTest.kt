@@ -12,6 +12,7 @@ import androidx.test.espresso.action.ViewActions.replaceText
 import androidx.test.espresso.action.ViewActions.scrollTo
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
+import androidx.test.espresso.matcher.ViewMatchers.isEnabled
 import androidx.test.espresso.matcher.ViewMatchers.isCompletelyDisplayed
 import androidx.test.espresso.matcher.ViewMatchers.isDescendantOfA
 import androidx.test.espresso.matcher.ViewMatchers.withId
@@ -99,7 +100,7 @@ class LifeClockWeekReviewUiTest : BaseUiTest() {
         closeSoftKeyboard()
         activityScenarioRule.scenario.recreate()
         onView(withId(reviewR.id.reviewKeep)).perform(scrollTo()).check(matches(withText("Keep walking")))
-        onView(withId(reviewR.id.reviewSave)).perform(scrollTo(), click())
+        tryAction { onView(withId(reviewR.id.reviewSave)).perform(scrollTo()).check(matches(isEnabled())).perform(click()) }
         tryAction { runBlocking { assertEquals("Keep walking", reviews.getReviews().single().keep?.text) } }
         runBlocking {
             val review = reviews.getReviews().single()
@@ -109,7 +110,7 @@ class LifeClockWeekReviewUiTest : BaseUiTest() {
         }
         onView(withId(reviewR.id.reviewKeep)).perform(scrollTo(), replaceText(""))
         closeSoftKeyboard()
-        onView(withId(reviewR.id.reviewSave)).perform(scrollTo(), click())
+        tryAction { onView(withId(reviewR.id.reviewSave)).perform(scrollTo()).check(matches(isEnabled())).perform(click()) }
         tryAction { runBlocking { assertNull(reviews.getReviews().single().keep) } }
     }
 

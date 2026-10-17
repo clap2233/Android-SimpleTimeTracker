@@ -2,6 +2,7 @@ package com.example.util.simpletimetracker
 
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.Espresso.onData
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.espresso.action.ViewActions.scrollTo
 import androidx.test.espresso.action.ViewActions.click
@@ -18,6 +19,7 @@ import com.example.util.simpletimetracker.utils.BaseUiTest
 import com.example.util.simpletimetracker.utils.NavUtils
 import com.example.util.simpletimetracker.utils.clickOnView
 import com.example.util.simpletimetracker.utils.clickOnViewWithText
+import com.example.util.simpletimetracker.utils.tryAction
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.isCompletelyDisplayed
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -50,11 +52,11 @@ class LifeClockRecordDetailsUiTest : BaseUiTest() {
         testUtils.addActivity(name, color = firstColor, icon = firstIcon)
         NavUtils.openRunningRecordsScreen()
         clickOnViewWithText(name)
-        onView(withId(baseR.id.runningEdit)).check(matches(isCompletelyDisplayed())).perform(click())
+        tryAction { onView(allOf(withId(baseR.id.runningEdit), isCompletelyDisplayed())).perform(click()) }
         onView(withId(detailsR.id.lifeClockHappinessButton)).perform(scrollTo()).check(matches(isCompletelyDisplayed())).perform(click())
         clickOnViewWithText("2")
         onView(withId(detailsR.id.lifeClockMeaningButton)).perform(scrollTo()).check(matches(isCompletelyDisplayed())).perform(click())
-        clickOnViewWithText("3")
+        onData(org.hamcrest.CoreMatchers.equalTo("3")).perform(click())
         onView(withId(detailsR.id.lifeClockPhotosButton)).perform(scrollTo()).check(matches(isCompletelyDisplayed())).perform(click())
         onView(withText(getString(coreR.string.life_clock_select_photo))).check(matches(isCompletelyDisplayed()))
         pressBack()
@@ -65,7 +67,7 @@ class LifeClockRecordDetailsUiTest : BaseUiTest() {
             assertEquals(2.0, saved.tags.single { it.tagId == identity.happinessTagId }.numericValue)
             assertEquals(3.0, saved.tags.single { it.tagId == identity.meaningTagId }.numericValue)
         }
-        onView(withId(baseR.id.runningStop)).check(matches(isCompletelyDisplayed())).perform(click())
+        onView(allOf(withId(baseR.id.runningStop), isCompletelyDisplayed())).perform(click())
         runBlocking {
             assertEquals(0, running.getAll().size)
             val saved = records.getAll().single()

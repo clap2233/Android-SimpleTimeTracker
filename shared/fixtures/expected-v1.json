@@ -9,9 +9,9 @@
   "runningMs": 900000,
   "confirmedEventCount": 4,
   "confirmedByType": {
+    "0": 900000,
     "1": 1800000,
     "2": 1800000,
-    "0": 900000,
     "4": 900000
   },
   "happiness": {
@@ -27,6 +27,12 @@
   },
   "meaning": {
     "distribution": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
       0,
       0,
       1,

@@ -134,7 +134,7 @@ class NotificationActivitySwitchManager @Inject constructor(
             }
 
             controlsManager.getControlsView(
-                from = NotificationControlsManager.From.ActivitySwitch,
+                from = NotificationControlsManager.From.ActivitySwitch(params.sessionId),
                 controls = params.controls,
                 isBig = isBig,
             )?.let {

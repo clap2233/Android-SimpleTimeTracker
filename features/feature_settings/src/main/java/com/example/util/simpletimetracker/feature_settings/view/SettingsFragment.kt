@@ -97,7 +97,7 @@ class SettingsFragment :
         settingsAbout.setOnClickListener { viewModel.openSection("about") }
         settingsHelp.setOnClickListener {
             MaterialAlertDialogBuilder(requireContext()).setTitle("从这里开始")
-                .setMessage("现在：点活动开始，点运行卡停止，也可使用停止和编辑按钮。\n\n时间：点色块编辑，点过去的空档补记。非整段时间先保留为待整理。\n\n详情：评分、照片和情境都可跳过；点击保存后生效。\n\n回顾：看时间与体验，选择下周想保留或调整的事。\n\n数据：完整 ZIP 含照片，可用于恢复；CSV 和 ICS 不能代替完整备份。")
+                .setMessage("现在：点活动开始，点运行卡停止。活动或模板可设置专注退出轻提醒、周期收尾提醒。\n\n时间：点色块编辑，点过去的空档补记。真实时长不必凑满 15 分钟。\n\n详情：快乐 1—5，意义 −5—＋5，两项都填写才显示合计；恢复感、照片和情境都可跳过。点击保存后生效。\n\n规划：待办只需标题，可安排重复时段或缓冲。计划不会自动成为经历。\n\n回顾：看时间与体验，选择下周想保留或调整的事。\n\n数据：完整 ZIP 含照片和规划，可用于恢复；CSV 和 ICS 不能代替完整备份。")
                 .setPositiveButton("知道了", null).show()
         }
         settingsLicense.setOnClickListener {

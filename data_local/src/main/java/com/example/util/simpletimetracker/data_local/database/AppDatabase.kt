@@ -63,6 +63,10 @@ import com.example.util.simpletimetracker.data_local.recordsFilter.FavouriteReco
         LifeClockSettingsDBO::class,
         WeeklyReviewDBO::class,
         ReviewTrialDBO::class,
+        com.example.util.simpletimetracker.data_local.planning.PlanTaskDBO::class,
+        com.example.util.simpletimetracker.data_local.planning.PlanScheduleDBO::class,
+        com.example.util.simpletimetracker.data_local.planning.PlanExceptionDBO::class,
+        com.example.util.simpletimetracker.data_local.planning.PlanRecordLinkDBO::class,
         CategoryDBO::class,
         RecordTypeCategoryDBO::class,
         RecordTagDBO::class,
@@ -84,10 +88,12 @@ import com.example.util.simpletimetracker.data_local.recordsFilter.FavouriteReco
         FavouriteRecordsFilterDBO.MainDBO::class,
         FavouriteRecordsFilterDBO.FilterDBO::class,
     ],
-    version = 37,
+    version = 38,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
+
+    abstract fun planningDao(): com.example.util.simpletimetracker.data_local.planning.PlanningDao
 
     abstract fun recordDao(): RecordDao
 

@@ -16,6 +16,7 @@ data class RecordShortcut(
             val tags: List<RecordBase.Tag>,
             val name: String = "",
             val summary: String = "",
+            val timerPolicy: com.example.util.simpletimetracker.domain.rhythm.TimerPolicy? = null,
         ) : Target {
             override val mode: TargetMode = TargetMode.Record
         }

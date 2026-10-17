@@ -1,6 +1,9 @@
 package com.example.util.simpletimetracker.data_local.record
 
 import androidx.collection.LruCache
+import androidx.room.withTransaction
+import com.example.util.simpletimetracker.data_local.database.AppDatabase
+import com.example.util.simpletimetracker.data_local.planning.PlanLinks
 import com.example.util.simpletimetracker.data_local.base.logDataAccess
 import com.example.util.simpletimetracker.data_local.base.withLockedCache
 import com.example.util.simpletimetracker.domain.record.model.Range
@@ -16,6 +19,7 @@ import javax.inject.Singleton
 @Singleton
 class RecordRepoImpl @Inject constructor(
     private val recordDao: RecordDao,
+    private val database: AppDatabase,
     private val recordDataLocalMapper: RecordDataLocalMapper,
 ) : RecordRepo {
 
@@ -215,19 +219,19 @@ class RecordRepoImpl @Inject constructor(
 
     override suspend fun remove(id: Long) = mutex.withLockedCache(
         logMessage = "remove",
-        accessSource = { recordDao.delete(id) },
+        accessSource = { database.withTransaction { recordDao.delete(id); PlanLinks.removeMissing(database) } },
         afterSourceAccess = { clearCache() },
     )
 
     override suspend fun removeByType(typeId: Long) = mutex.withLockedCache(
         logMessage = "removeByType",
-        accessSource = { recordDao.deleteByType(typeId) },
+        accessSource = { database.withTransaction { recordDao.deleteByType(typeId); PlanLinks.removeMissing(database) } },
         afterSourceAccess = { clearCache() },
     )
 
     override suspend fun clear() = mutex.withLockedCache(
         logMessage = "clear",
-        accessSource = { recordDao.clear() },
+        accessSource = { database.withTransaction { recordDao.clear(); PlanLinks.removeMissing(database) } },
         afterSourceAccess = { clearCache() },
     )
 

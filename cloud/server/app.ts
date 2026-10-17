@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { registerAi } from './ai.js';
 import { timingSafeEqual } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
@@ -7,8 +8,9 @@ import { z } from 'zod';
 import { uuid } from '../shared/snapshot.js';
 import { BackupStore, StoreError } from './store.js';
 
-export async function createApp(config: { dataDir: string; writeToken: string; readToken: string; webDir?: string }) {
+export async function createApp(config: { dataDir: string; writeToken: string; readToken: string; aiToken?: string; webDir?: string }) {
   if (config.writeToken.length < 32 || config.readToken.length < 32 || config.readToken === config.writeToken) throw new Error('Distinct tokens of at least 32 characters are required');
+  if (config.aiToken && (config.aiToken.length < 32 || [config.readToken, config.writeToken].includes(config.aiToken))) throw new Error('AI token must be distinct and at least 32 characters');
   const store = new BackupStore(path.resolve(config.dataDir)); await store.initialize();
   const app = Fastify({ logger: false, bodyLimit: 128 * 1024 * 1024, requestTimeout: 120000 });
   function matches(given: string, wanted: string) {
@@ -19,6 +21,13 @@ export async function createApp(config: { dataDir: string; writeToken: string; r
     reply.header('Cache-Control', 'no-store').header('X-Content-Type-Options', 'nosniff').header('Referrer-Policy', 'no-referrer');
     if (request.routeOptions.url?.startsWith('/api/') !== true) return;
     const bearer = request.headers.authorization?.match(/^Bearer (\S+)$/)?.[1] ?? '';
+    const ai = Boolean(config.aiToken && matches(bearer, config.aiToken));
+    if (request.routeOptions.url?.startsWith('/api/ai/')) {
+      if (!ai) return reply.code(401).send({ error: 'AI_AUTH_REQUIRED' });
+      if (request.method !== 'GET' && request.method !== 'HEAD') return reply.code(403).send({ error: 'READ_ONLY' });
+      return;
+    }
+    if (ai) return reply.code(403).send({ error: 'AI_SCOPE_DENIED' });
     const write = request.method !== 'GET' && request.method !== 'HEAD';
     if (!matches(bearer, config.writeToken) && (write || !matches(bearer, config.readToken))) return reply.code(write && matches(bearer, config.readToken) ? 403 : 401).send({ error: 'AUTH_REQUIRED' });
     if (write) {
@@ -34,6 +43,7 @@ export async function createApp(config: { dataDir: string; writeToken: string; r
     if (error instanceof z.ZodError || error instanceof SyntaxError || (error as Error).name === 'Error' && !('code' in (error as object))) return reply.code(422).send({ error: 'INVALID_BACKUP' });
     return reply.code(503).send({ error: 'BACKUP_UNAVAILABLE' });
   });
+  registerAi(app, store);
   app.get('/api/backups/latest', async () => ({ latest: await store.latest() }));
   const prepare = z.object({ snapshotJson: z.string().max(64 * 1024 * 1024), parentSnapshotId: uuid.nullable() }).strict();
   app.post('/api/backups/prepare', async request => { const body = prepare.parse(request.body); if (Buffer.byteLength(body.snapshotJson) > 64 * 1024 * 1024) throw new StoreError(413, 'MANIFEST_TOO_LARGE'); return store.prepare(body.snapshotJson, body.parentSnapshotId); });

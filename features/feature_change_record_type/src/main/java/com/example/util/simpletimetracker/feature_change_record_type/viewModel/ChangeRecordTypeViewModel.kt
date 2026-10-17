@@ -110,6 +110,8 @@ class ChangeRecordTypeViewModel @Inject constructor(
 
     private val recordTypeId: Long get() = (extra as? ChangeRecordTypeParams.Change)?.id.orZero()
     private var initialCategories: Set<Long> = emptySet()
+    val timerPolicy = MutableLiveData(com.example.util.simpletimetracker.domain.rhythm.TimerPolicy())
+
     private var newName: String = ""
     private var newCategories: MutableList<Long> = mutableListOf()
     private var newDefaultDuration: Long = 0
@@ -376,6 +378,7 @@ class ChangeRecordTypeViewModel @Inject constructor(
             color = colorSelectionViewModelDelegate.newColor,
             defaultDuration = newDefaultDuration,
             note = newNote,
+            timerPolicy = requireNotNull(timerPolicy.value),
         )
 
         return recordTypeInteractor.add(recordType)
@@ -402,6 +405,7 @@ class ChangeRecordTypeViewModel @Inject constructor(
             newName = it.name
             newDefaultDuration = it.defaultDuration
             newNote = it.note
+            timerPolicy.value = it.timerPolicy
             iconSelectionViewModelDelegateImpl.newIcon = it.icon
             colorSelectionViewModelDelegate.newColor = it.color
             goalsViewModelDelegate.initialize(RecordTypeGoal.IdData.Type(it.id))

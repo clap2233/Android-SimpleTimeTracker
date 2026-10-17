@@ -11,6 +11,7 @@ import com.example.util.simpletimetracker.domain.record.model.RunningRecord
 import com.example.util.simpletimetracker.domain.record.repo.RecordMutationFeedback
 import com.example.util.simpletimetracker.domain.record.repo.RecordMutationRepo
 import javax.inject.Inject
+import com.example.util.simpletimetracker.domain.record.model.operationIdentity
 
 class AddRunningRecordMediator @Inject constructor(
     private val mutations: RecordMutationRepo,
@@ -22,12 +23,14 @@ class AddRunningRecordMediator @Inject constructor(
     private val processRulesInteractor: ProcessRulesInteractor,
     private val updateExternalViewsInteractor: UpdateExternalViewsInteractor,
     private val currentTimestampProvider: CurrentTimestampProvider,
+    private val exitPrompt: com.example.util.simpletimetracker.domain.rhythm.TimerExitPrompt = com.example.util.simpletimetracker.domain.rhythm.TimerExitPrompt.Decline,
     private val restoreGate: com.example.util.simpletimetracker.domain.backup.interactor.DataRestoreGate = com.example.util.simpletimetracker.domain.backup.interactor.DataRestoreGate(),
 ) {
     suspend fun tryStartTimer(
         typeId: Long,
         updateNotificationSwitch: Boolean = true,
         commentInputAvailable: Boolean = true,
+        expectedSessionId: String? = null,
         onNeedToShowTagSelection: suspend (RecordDataSelectionDialogResult) -> Unit,
     ): Boolean {
         if (runningRecordInteractor.get(typeId) != null) return false
@@ -36,7 +39,7 @@ class AddRunningRecordMediator @Inject constructor(
             onNeedToShowTagSelection(selection)
             false
         } else {
-            startTimer(typeId, emptyList(), "", updateNotificationSwitch = updateNotificationSwitch)
+            startTimer(typeId, emptyList(), "", updateNotificationSwitch = updateNotificationSwitch, expectedSessionId = expectedSessionId)
         }
     }
 
@@ -51,7 +54,14 @@ class AddRunningRecordMediator @Inject constructor(
         useSelectedTags: Boolean = false,
         summary: String = "",
         templateId: Long? = null,
+        plan: com.example.util.simpletimetracker.domain.planning.PlanOccurrence? = null,
+        expectedSessionId: String? = null,
     ): Boolean {
+        val previous = runningRecordInteractor.getAll().singleOrNull()
+        if (expectedSessionId != null && expectedSessionId != (previous?.operationIdentity() ?: "idle")) return false
+        if (previous?.id == typeId && (templateId == null || previous.templateId == templateId)) return false
+        val session = previous?.timerSession
+        if (session != null && session.policy.needsExitConfirmation(session.startedAt, currentTimestampProvider.get()) && !exitPrompt.confirm(session, true)) return false
         val now = currentTimestampProvider.get()
         val writeToken = restoreGate.token()
         val start = when (timeStarted) {
@@ -70,7 +80,7 @@ class AddRunningRecordMediator @Inject constructor(
             return false
         }
         return try {
-            val change = mutations.start(record, now)
+            val change = mutations.start(record, now, previous?.operationIdentity() ?: "idle", session != null, plan)
             val started = change.started ?: return false
             change.stopped.forEach {
                 activityStartedStoppedBroadcastInteractor.onActivityStopped(it.id, it.tags.map(RecordBase.Tag::tagId), it.comment, it.timeStarted)

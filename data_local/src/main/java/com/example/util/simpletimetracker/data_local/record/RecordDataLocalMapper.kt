@@ -19,6 +19,7 @@ class RecordDataLocalMapper @Inject constructor() {
             summary = dbo.record.summary,
             zoneId = dbo.record.zoneId,
             templateId = dbo.record.templateId,
+            recovery = dbo.record.recovery?.let(com.example.util.simpletimetracker.domain.rhythm.Recovery::valueOf),
             reviewState = RecordReviewState.fromStorageValue(dbo.record.reviewState),
         )
     }
@@ -34,6 +35,7 @@ class RecordDataLocalMapper @Inject constructor() {
             summary = domain.summary,
             zoneId = domain.zoneId,
             templateId = domain.templateId,
+            recovery = domain.recovery?.name,
             reviewState = domain.reviewState.storageValue,
         )
     }

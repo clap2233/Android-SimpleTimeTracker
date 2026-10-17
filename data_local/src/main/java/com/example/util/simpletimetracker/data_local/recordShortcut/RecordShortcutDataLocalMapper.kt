@@ -21,6 +21,7 @@ class RecordShortcutDataLocalMapper @Inject constructor() {
                 tags = dbo.recordTags.map(::map),
                 name = dbo.shortcut.name,
                 summary = dbo.shortcut.summary,
+                timerPolicy = com.example.util.simpletimetracker.data_local.planning.PlanningJson.policy(dbo.shortcut.timerPolicy),
             )
         }
 
@@ -47,6 +48,7 @@ class RecordShortcutDataLocalMapper @Inject constructor() {
                 ?.let(::mapSettingAction).orZero(),
             name = recordTarget?.name.orEmpty(),
             summary = recordTarget?.summary.orEmpty(),
+            timerPolicy = recordTarget?.timerPolicy?.let(com.example.util.simpletimetracker.data_local.planning.PlanningJson::encode),
         )
     }
 

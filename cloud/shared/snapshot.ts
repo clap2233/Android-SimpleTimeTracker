@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { timerPolicySchema, timerSessionSchema, recoverySchema, planningFields, planningTables, planningSchemas } from './planning.js';
 import { DateTime } from 'luxon';
 import { parseTree, type Node as JsonNode, type ParseError } from 'jsonc-parser';
 import { nativeSchema, businessKinds } from './native-schema.js';
@@ -13,8 +14,8 @@ const color = z.object({ colorId: z.number().int().min(-2147483648).max(21474836
 const tagValue = z.object({ tagId: entityId, numericValue: z.number().nullable(), ratedAt: time.nullable().optional() }).strict();
 const context = { comment: z.string().default(''), summary: z.string().default(''), zoneId: zone.nullable().optional(), templateId: entityId.nullable().optional() };
 const record = z.object({ id: entityId, typeId: zeroId, timeStarted: time, timeEnded: time,
-  tags: z.array(tagValue), reviewState: z.enum(['CONFIRMED', 'PENDING']).default('PENDING'), ...context }).strict();
-const running = z.object({ id: entityId, timeStarted: time, tags: z.array(tagValue), ...context }).strict();
+  recovery: recoverySchema.nullable().optional(), tags: z.array(tagValue), reviewState: z.enum(['CONFIRMED', 'PENDING']).default('PENDING'), ...context }).strict();
+const running = z.object({ timerSession: timerSessionSchema.nullable().optional(), id: entityId, timeStarted: time, tags: z.array(tagValue), ...context }).strict();
 const ref = z.object({ recordId: entityId, caption: z.string().default('') }).strict();
 const choice = z.object({ text: z.string().default(''), recordId: entityId.nullable().optional(), templateId: entityId.nullable().optional() }).strict()
   .refine(v => !(v.recordId && v.templateId));
@@ -24,8 +25,8 @@ export const photoSchema = z.object({ id: entityId, recordId: entityId.nullable(
   relativePath: z.string().regex(/^photos\/[a-zA-Z0-9_-]+\.(png|jpg|jpeg|webp|gif|bmp|heic|heif|avif)$/),
   sha256: z.string().regex(/^[a-f0-9]{64}$/), position: z.number().int().min(0).max(2147483647),
   mimeType: z.string().regex(/^image\/[a-z0-9.+-]+$/), sizeBytes: z.number().int().min(1).max(50 * 1024 * 1024) }).strict();
-export const snapshotSchema = z.object({ schemaVersion: z.literal(1), dataSetId: uuid, snapshotId: uuid, createdAt: time.min(0),
-  recordTypes: z.array(z.object({ id: entityId, name: z.string(), icon: z.string(), color, defaultDuration: time.min(0), note: z.string().default(''), hidden: z.boolean() }).strict()),
+export const snapshotSchema = z.object({ schemaVersion: z.union([z.literal(1), z.literal(2)]), ...planningFields, dataSetId: uuid, snapshotId: uuid, createdAt: time.min(0),
+  recordTypes: z.array(z.object({ timerPolicy: timerPolicySchema.nullable().optional(), id: entityId, name: z.string(), icon: z.string(), color, defaultDuration: time.min(0), note: z.string().default(''), hidden: z.boolean() }).strict()),
   categories: z.array(z.object({ id: entityId, name: z.string(), color, note: z.string().default('') }).strict()).default([]),
   tags: z.array(z.object({ id: entityId, name: z.string(), icon: z.string().default(''), color, iconColorSource: zeroId,
     note: z.string().default(''), archived: z.boolean(), valueType: z.enum(['NONE', 'NUMERIC']), valueSuffix: z.string().default(''), purpose: z.enum(['GENERAL', 'PERSON', 'ENVIRONMENT']).default('GENERAL') }).strict()),
@@ -34,7 +35,7 @@ export const snapshotSchema = z.object({ schemaVersion: z.literal(1), dataSetId:
   defaultRecordTypeTags: z.array(z.object({ recordTypeId: entityId, tagId: entityId }).strict()).default([]),
   records: z.array(record), runningRecords: z.array(running).max(1),
   ratingTagIds: z.object({ happinessTagId: entityId, meaningTagId: entityId }).strict(), photos: z.array(photoSchema),
-  templates: z.array(z.object({ id: entityId, typeId: entityId, name: z.string().default(''), tags: z.array(tagValue), ...context }).strict()).default([]),
+  templates: z.array(z.object({ timerPolicy: timerPolicySchema.nullable().optional(), id: entityId, typeId: entityId, name: z.string().default(''), tags: z.array(tagValue), ...context }).strict()).default([]),
   settingShortcuts: z.array(z.object({ id: entityId, action: z.enum(['Multitasking', 'RetroactiveMode', 'Categories', 'Archive', 'DataEdit', 'SortActivities']) }).strict()).default([]),
   weeklyReviews: z.array(z.object({ id: entityId, weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), zoneId: zone,
     timeAbundance: z.string().nullable().optional(), pleasantRecords: z.array(ref).default([]), unpleasantRecords: z.array(ref).default([]),
@@ -42,7 +43,7 @@ export const snapshotSchema = z.object({ schemaVersion: z.literal(1), dataSetId:
   trials: z.array(z.object({ id: entityId, reviewId: entityId.nullable().optional(), source: ref.nullable().optional(),
     description: z.string().refine(v => v.trim().length > 0), relatedRecordIds: softIds }).strict()).default([]),
   businessSettings: z.record(z.string(), z.unknown()).default({}), repairRecordIds: softIds,
-  upstreamData: z.object({ databaseVersion: z.union([z.literal(36), z.literal(37)]), tables: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))) }).strict().optional(),
+  upstreamData: z.object({ databaseVersion: z.union([z.literal(36), z.literal(37), z.literal(38)]), tables: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))) }).strict().optional(),
 }).strict();
 export type Snapshot = z.infer<typeof snapshotSchema>;
 export type Experience = Snapshot['records'][number];
@@ -74,10 +75,10 @@ export function strictJson(text: string, integerStrings = false): unknown {
   return visit(tree);
 }
 
-export function repairIds(s: Snapshot): Set<string> {
+export function repairIds(s: Snapshot, legacy = false): Set<string> {
   const invalid = new Set<string>();
   const intervals = s.records.map(r => {
-    if (r.timeEnded <= r.timeStarted || r.timeEnded > s.createdAt || r.reviewState === 'CONFIRMED' && (r.timeEnded - r.timeStarted) % 900000) invalid.add(r.id);
+    if (r.timeEnded <= r.timeStarted || r.timeEnded > s.createdAt || legacy && r.reviewState === 'CONFIRMED' && (r.timeEnded - r.timeStarted) % 900000) invalid.add(r.id);
     return { id: r.id, start: r.timeStarted, end: r.timeEnded };
   });
   intervals.push(...s.runningRecords.map(r => ({ id: '0', start: r.timeStarted, end: s.createdAt })));
@@ -102,7 +103,7 @@ export function validateSnapshot(input: unknown): Snapshot {
     check(unique(r.tags.map(t => t.tagId)), 'Duplicate record tag');
     for (const t of r.tags) {
       check(tags.has(t.tagId), 'Missing tag');
-      if (rating.includes(t.tagId)) check(t.numericValue === null || Number.isInteger(t.numericValue) && t.numericValue >= 1 && t.numericValue <= 5, 'Invalid rating');
+      if (rating.includes(t.tagId)) check(t.numericValue === null || Number.isInteger(t.numericValue) && t.numericValue >= (t.tagId === s.ratingTagIds.meaningTagId && s.schemaVersion >= 2 ? -5 : 1) && t.numericValue <= 5, 'Invalid rating');
     }
   }
   for (const r of s.records) check(r.typeId === '0' || types.has(r.typeId), 'Missing type');
@@ -126,12 +127,25 @@ export function validateSnapshot(input: unknown): Snapshot {
     check(unique(r.pleasantRecords.map(v => v.recordId)) && unique(r.unpleasantRecords.map(v => v.recordId)), 'Duplicate chosen experience');
   }
   for (const t of s.trials) check(!t.reviewId || reviews.has(t.reviewId), 'Missing review');
-  const repairs = repairIds(s); check(repairs.size === s.repairRecordIds.length && s.repairRecordIds.every(id => repairs.has(id)), 'Incorrect repair declarations');
+  const repairs = repairIds(s, s.schemaVersion === 1); check(repairs.size === s.repairRecordIds.length && s.repairRecordIds.every(id => repairs.has(id)), 'Incorrect repair declarations');
   for (const [key, value] of Object.entries(s.businessSettings)) {
     check(Object.hasOwn(businessKinds, key), 'Unknown business setting');
     const kind = businessKinds[key as keyof typeof businessKinds];
     check(kind === 'BOOLEAN' ? typeof value === 'boolean' : kind === 'STRING' ? typeof value === 'string' : kind === 'SET' ? Array.isArray(value) && value.every(v => typeof v === 'string') :
       typeof value === 'number' && Number.isSafeInteger(value) && (kind !== 'INT' || value >= -2147483648 && value <= 2147483647), 'Invalid business setting');
+  }
+  for (const name of planningTables) ids(s[name]);
+  if (s.schemaVersion === 1) check(planningTables.every(name => !s[name].length) && s.records.every(r => r.recovery === undefined) &&
+    [...s.recordTypes, ...s.templates].every(r => r.timerPolicy === undefined) && s.runningRecords.every(r => r.timerSession === undefined), 'V3 data requires schema 2');
+  const taskIds = ids(s.planTasks), scheduleIds = ids(s.planSchedules);
+  for (const p of s.planSchedules) check(!p.taskId || taskIds.has(p.taskId), 'Missing plan task');
+  for (const p of s.planExceptions) check(scheduleIds.has(p.scheduleId), 'Missing plan schedule');
+  for (const r of s.runningRecords) if (r.timerSession) check(r.timerSession.startedAt <= s.createdAt, 'Future timer session');
+  for (const p of s.planRecordLinks) {
+    const record = p.recordId ? s.records.find(r => r.id === p.recordId) : s.runningRecords.find(r => r.id === p.runningRecordId);
+    check(record, 'Missing plan record');
+    const end = 'timeEnded' in record ? record.timeEnded : s.createdAt;
+    check(p.timeStarted >= record.timeStarted && p.timeStarted <= end && (p.timeEnded == null || p.timeEnded <= end), 'Invalid plan allocation');
   }
   if (s.upstreamData) validateNative(s);
   return s;
@@ -145,6 +159,7 @@ function validateNative(s: Snapshot) {
     for (const row of rows) {
       check(Object.keys(row).every(c => Object.hasOwn(columns, c)), 'Unknown native column');
       for (const [c, spec] of Object.entries(columns)) {
+        if (!Object.hasOwn(row, c) && !spec.required && s.upstreamData!.databaseVersion < 38) continue;
         check(Object.hasOwn(row, c), 'Missing native column');
         const v = row[c];
         check(v === null ? !spec.required : spec.type === 'INTEGER' ? typeof v === 'string' && /^-?\d+$/.test(v) && BigInt(v) >= -9223372036854775808n && BigInt(v) <= 9223372036854775807n :
@@ -161,7 +176,7 @@ function validateNative(s: Snapshot) {
     for (const item of data) { const value = indexed.get(item.id); check(value, 'Missing native row'); for (const [key, val] of Object.entries(value)) check(canonical(val) === canonical((item as Record<string, unknown>)[key]), `Conflicting native ${key}`); }
   };
   const nativeColor = (r: Record<string, unknown>) => ({ colorId: Number(r.color), colorInt: r.color_int });
-  projection('recordTypes', s.recordTypes, r => ({ id: r.id, name: r.name, icon: r.icon, color: nativeColor(r), note: r.note, hidden: r.hidden === '1', defaultDuration: Number(r.instantDuration) }));
+  projection('recordTypes', s.recordTypes, r => ({ id: r.id, name: r.name, icon: r.icon, color: nativeColor(r), note: r.note, hidden: r.hidden === '1', defaultDuration: Number(r.instantDuration), timerPolicy: r.timer_policy ? timerPolicySchema.parse(strictJson(r.timer_policy as string)) : null }));
   projection('categories', s.categories, r => ({ id: r.id, name: r.name, color: nativeColor(r), note: r.note }));
   projection('recordTags', s.tags, r => ({ id: r.id, name: r.name, icon: r.icon, color: nativeColor(r), note: r.note, iconColorSource: r.icon_color_source,
     archived: r.archived === '1', valueType: r.value_type === '1' ? 'NUMERIC' : 'NONE', valueSuffix: r.value_suffix ?? '', purpose: ['GENERAL','PERSON','ENVIRONMENT'][Number(r.purpose)] }));
@@ -170,14 +185,21 @@ function validateNative(s: Snapshot) {
     .map(v => ({ tagId: v.record_tag_id, numericValue: v.record_tag_numeric_value, ratedAt: template ? null : v.rated_at === null ? null : Number(v.rated_at) }));
   const context = (r: Record<string, unknown>, table: string, key: string, template = false) => ({ id: r.id, summary: r.summary, comment: r.comment,
     ...(template ? {} : { zoneId: r.zone_id, templateId: r.template_id }), tags: values(table, key, r.id, template) });
-  projection('records', s.records, r => ({ ...context(r, 'recordToRecordTag', 'record_id'), typeId: r.type_id, timeStarted: Number(r.time_started), timeEnded: Number(r.time_ended), reviewState: r.review_state === '1' ? 'CONFIRMED' : 'PENDING' }));
-  projection('runningRecords', s.runningRecords, r => ({ ...context(r, 'runningRecordToRecordTag', 'running_record_id'), timeStarted: Number(r.time_started) }));
+  projection('records', s.records, r => ({ ...context(r, 'recordToRecordTag', 'record_id'), typeId: r.type_id, timeStarted: Number(r.time_started), timeEnded: Number(r.time_ended), reviewState: r.review_state === '1' ? 'CONFIRMED' : 'PENDING', recovery: r.recovery ?? null }));
+  projection('runningRecords', s.runningRecords, r => ({ ...context(r, 'runningRecordToRecordTag', 'running_record_id'), timeStarted: Number(r.time_started), timerSession: r.timer_session ? timerSessionSchema.parse(strictJson(r.timer_session as string)) : null }));
   const nativeShortcuts = rows('recordShortcuts');
   check(nativeShortcuts.length === s.templates.length + s.settingShortcuts.length, 'Conflicting shortcuts');
   const original = tables.recordShortcuts;
   tables.recordShortcuts = nativeShortcuts.filter(r => r.target_type === '0');
-  projection('recordShortcuts', s.templates, r => ({ ...context(r, 'recordShortcutToRecordTag', 'shortcut_id', true), typeId: r.type_id, name: r.name }));
+  projection('recordShortcuts', s.templates, r => ({ ...context(r, 'recordShortcutToRecordTag', 'shortcut_id', true), typeId: r.type_id, name: r.name, timerPolicy: r.timer_policy ? timerPolicySchema.parse(strictJson(r.timer_policy as string)) : null }));
   tables.recordShortcuts = original;
+  for (const table of planningTables) projection(table, s[table], r => {
+    const value = strictJson(r.content_json as string, true) as Record<string, unknown>;
+    value.id = r.id;
+    for (const key of ['startMinute', 'durationMinutes', 'timeStarted', 'timeEnded']) if (value[key] != null) value[key] = Number(value[key]);
+    if (Array.isArray(value.weekdays)) value.weekdays = value.weekdays.map(Number);
+    return planningSchemas[table].parse(value);
+  });
   const actions = ['Multitasking','RetroactiveMode','Categories','Archive','DataEdit','SortActivities'];
   for (const item of s.settingShortcuts) check(nativeShortcuts.some(r => r.id === item.id && r.target_type === '1' && actions[Number(r.setting_action)] === item.action), 'Conflicting setting shortcut');
   projection('recordPhotos', s.photos, r => ({ id: r.id, recordId: r.record_id, runningRecordId: r.running_record_id, relativePath: r.relative_path, sha256: r.sha256, position: Number(r.position) }));

@@ -106,7 +106,7 @@ internal class SnapshotCodec {
             }
         }
         return SnapshotJson.obj(
-            "schemaVersion" to 1, "dataSetId" to identity.text("data_set_id"), "snapshotId" to snapshotId, "createdAt" to createdAt,
+            "schemaVersion" to 2, "dataSetId" to identity.text("data_set_id"), "snapshotId" to snapshotId, "createdAt" to createdAt,
             "ratingTagIds" to SnapshotJson.obj("happinessTagId" to identity.long("happiness_tag_id").toString(), "meaningTagId" to identity.long("meaning_tag_id").toString()),
             "recordTypes" to recordTypes, "categories" to rows("categories").map { SnapshotJson.obj("id" to it.long("id").toString(), "name" to it.text("name"), "color" to color(it), "note" to it.text("note")) },
             "recordTypeCategories" to relation("recordTypeCategory", "record_type_id", "recordTypeId", "category_id", "categoryId"),
@@ -114,8 +114,8 @@ internal class SnapshotCodec {
             "defaultRecordTypeTags" to relation("recordTypeToDefaultTag", "record_type_id", "recordTypeId", "record_tag_id", "tagId"),
             "records" to rows("records").map { record(it, false) }, "runningRecords" to rows("runningRecords").map { record(it, true) },
             "photos" to normalizedPhotos, "templates" to templates, "settingShortcuts" to shortcuts, "weeklyReviews" to weekly, "trials" to trials,
-            "businessSettings" to settings, "upstreamData" to SnapshotJson.obj("databaseVersion" to 37, "tables" to raw),
-        ).also { root -> root.add("repairRecordIds", SnapshotJson.value(SnapshotValidation.repairIds(root).map(Long::toString))) }
+            "businessSettings" to settings, "upstreamData" to SnapshotJson.obj("databaseVersion" to 38, "tables" to raw),
+        ).also { root -> SnapshotV3.decorate(root, tables); root.add("repairRecordIds", SnapshotJson.value(SnapshotValidation.repairIds(root).map(Long::toString))) }
     }
 
     private fun color(row: JsonObject) = SnapshotJson.obj("colorId" to row.long("color"), "colorInt" to row.text("color_int"))

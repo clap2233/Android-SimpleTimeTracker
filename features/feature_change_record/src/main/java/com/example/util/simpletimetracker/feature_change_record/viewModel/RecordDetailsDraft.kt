@@ -16,6 +16,8 @@ class RecordDetailsDraft @Inject constructor(
     private val settings: LifeClockSettingsRepo,
     val photoRepo: RecordPhotoRepo,
 ) {
+    val recovery = MutableLiveData<com.example.util.simpletimetracker.domain.rhythm.Recovery?>(null)
+    var running = false
     val summaryChanges = MutableLiveData("")
     var summary: String = ""
         set(value) {
@@ -33,6 +35,7 @@ class RecordDetailsDraft @Inject constructor(
 
     suspend fun load(summary: String, ownerId: Long, running: Boolean) = mutex.withLock {
         if (ready.value == true) return@withLock
+        this.running = running
         identity = settings.getOrCreate()
         this.summary = summary
         photos.value = if (ownerId > 0) photoRepo.get(ownerId, running) else emptyList()

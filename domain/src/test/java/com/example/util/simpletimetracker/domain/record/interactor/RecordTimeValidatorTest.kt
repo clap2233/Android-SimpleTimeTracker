@@ -22,13 +22,11 @@ class RecordTimeValidatorTest {
     }
 
     @Test
-    fun shortRecordRemainsPendingWithoutRounding() {
+    fun shortRecordCanBeConfirmedWithoutRounding() {
         validator.validate(listOf(record(760_123)), emptyList(), emptyList(), start + 900_000)
-        assertEquals(RecordReviewState.PENDING, validator.state(start, start + 760_123))
-        val error = assertThrows(RecordMutationException::class.java) {
-            validator.validate(listOf(record(760_123, state = RecordReviewState.CONFIRMED)), emptyList(), emptyList(), start + 900_000)
-        }
-        assertEquals(RecordMutationError.NOT_QUARTER_HOUR, error.reason)
+        assertEquals(RecordReviewState.CONFIRMED, validator.state(start, start + 760_123))
+        validator.validate(listOf(record(760_123, state = RecordReviewState.CONFIRMED)), emptyList(), emptyList(), start + 900_000)
+        validator.validate(listOf(record(1_320_000, state = RecordReviewState.CONFIRMED)), emptyList(), emptyList(), start + 1_320_000)
     }
 
     @Test

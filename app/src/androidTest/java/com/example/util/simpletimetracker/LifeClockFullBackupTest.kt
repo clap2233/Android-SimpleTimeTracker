@@ -62,6 +62,7 @@ class LifeClockFullBackupTest {
     @Inject lateinit var records: RecordRepo
     @Inject lateinit var gate: DataRestoreGate
     @Inject lateinit var mutations: RecordMutationRepo
+    @Inject lateinit var planning: com.example.util.simpletimetracker.domain.planning.PlanningRepo
     private val context: Context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private val created = mutableListOf<File>()
     private val start = 1_700_000_000_123L
@@ -134,6 +135,69 @@ class LifeClockFullBackupTest {
         }
         assertFalse(original.getAsJsonObject("businessSettings").has("automaticBackupUri"))
         assertEquals("private-device-uri", prefs.getString("automaticBackupUri", ""))
+    }
+
+    @Test fun v3ZipRestoresNegativeScoreRecoveryMovedPlanAndPhotoTogether() = runBlocking {
+        seed()
+        val meta = identity.getOrCreate()
+        val row = requireNotNull(database.recordDao().get(10)).record
+        database.recordDao().insert(row.copy(timeEnded = start + 760_000, recovery = "MORE_TIRED"))
+        database.recordToRecordTagDao().insert(listOf(RecordToRecordTagDBO(10, meta.meaningTagId, -3.0, start + 1)))
+        val plan = com.example.util.simpletimetracker.domain.planning.PlanSchedule(title = "reading", firstDate = "2026-10-12",
+            startMinute = 540, durationMinutes = 30, repeat = com.example.util.simpletimetracker.domain.planning.PlanRepeat.DAILY)
+        planning.save(plan)
+        planning.save(com.example.util.simpletimetracker.domain.planning.PlanException(plan.id, "2026-10-13", movedDate = "2026-11-01",
+            title = "morning reading", startMinute = 420, remind = true))
+        planning.save(com.example.util.simpletimetracker.domain.planning.PlanRecordLink(recordId = 10, occurrenceId = "${plan.id}@2026-10-13",
+            caption = "reading", timeStarted = start, timeEnded = start + 760_000))
+        caches.reset()
+        val archive = temp("zip")
+        backup.export(Uri.fromFile(archive).toString())
+        val original = manifest(archive)
+        assertEquals(2, original.get("schemaVersion").asInt)
+        planning.clear()
+        database.recordDao().insert(row.copy(summary = "changed"))
+        val preview = backup.prepareRestore(Uri.fromFile(archive).toString())
+        backup.restore(preview.token)
+        val restored = requireNotNull(records.get(10))
+        assertEquals(760_000L, restored.timeEnded - restored.timeStarted)
+        assertEquals(com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_TIRED, restored.recovery)
+        assertEquals(-3.0, restored.tags.single { it.tagId == meta.meaningTagId }.numericValue)
+        assertEquals("2026-11-01", planning.exceptions().single().movedDate)
+        assertEquals("${plan.id}@2026-10-13", planning.links().single().occurrenceId)
+        val photo = database.recordPhotoDao().getAll().single()
+        assertTrue(File(context.filesDir, photo.relativePath).isFile)
+        val second = temp("zip")
+        backup.export(Uri.fromFile(second).toString())
+        val after = manifest(second)
+        listOf("records", "photos", "planSchedules", "planExceptions", "planRecordLinks").forEach {
+            assertEquals(it, original.get(it), after.get(it))
+        }
+        if (InstrumentationRegistry.getArguments().getString("transferFixture") == "export") {
+            backup.export(Uri.fromFile(File(context.getExternalFilesDir(null), "v3-transfer.zip")).toString())
+        }
+    }
+
+    @Test fun restoreTransferredV3Fixture() = runBlocking {
+        org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("transferFixture") == "restore")
+        val input = File(context.getExternalFilesDir(null), "v3-transfer.zip")
+        val original = manifest(input)
+        val preview = backup.prepareRestore(Uri.fromFile(input).toString())
+        backup.restore(preview.token)
+        val row = requireNotNull(records.get(10))
+        assertEquals(760_000L, row.duration)
+        assertEquals(com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_TIRED, row.recovery)
+        assertEquals(-3.0, row.tags.single { it.tagId == identity.getOrCreate().meaningTagId }.numericValue)
+        assertEquals("2026-11-01", planning.exceptions().single().movedDate)
+        val photo = database.recordPhotoDao().getAll().single()
+        assertTrue(File(context.filesDir, photo.relativePath).isFile)
+        val output = File(context.getExternalFilesDir(null), "v3-transfer-restored.zip")
+        backup.export(Uri.fromFile(output).toString())
+        val restored = manifest(output)
+        listOf("dataSetId", "records", "photos", "recordTypes", "ratingTagIds", "templates", "weeklyReviews", "trials",
+            "businessSettings", "planSchedules", "planExceptions", "planRecordLinks").forEach {
+            assertEquals(it, original.get(it), restored.get(it))
+        }
     }
 
     @Test fun corruptedPhotoAndTraversalDoNotModifyCurrentData() = runBlocking {

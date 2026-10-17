@@ -10,4 +10,5 @@ data class NotificationActivitySwitchParams(
     val untrackedStartedTimeStamp: Long?,
     val prevRecordDuration: Long?,
     val controls: NotificationControlsParams,
+    val sessionId: String = "idle",
 )

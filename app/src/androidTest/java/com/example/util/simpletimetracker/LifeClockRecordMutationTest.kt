@@ -33,6 +33,93 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class LifeClockRecordMutationTest {
+    @Test
+    fun followingEditClearsFutureOverridesAndPlanningClearRemovesAllRows() = runBlocking {
+        withDatabase { db, _, _ ->
+            val planning = com.example.util.simpletimetracker.data_local.planning.PlanningRepoImpl(db, com.example.util.simpletimetracker.domain.backup.interactor.DataRestoreGate())
+            val task = com.example.util.simpletimetracker.domain.planning.PlanTask(title = "reading")
+            planning.save(task)
+            val plan = com.example.util.simpletimetracker.domain.planning.PlanSchedule(taskId = task.id, title = task.title, firstDate = "2026-10-12",
+                startMinute = 540, durationMinutes = 30, repeat = com.example.util.simpletimetracker.domain.planning.PlanRepeat.DAILY)
+            planning.save(plan)
+            planning.save(com.example.util.simpletimetracker.domain.planning.PlanException(plan.id, "2026-10-13", startMinute = 600))
+            planning.editSchedule(plan.id, plan.firstDate, plan.copy(startMinute = 720), true)
+            assertTrue(planning.exceptions().isEmpty())
+            assertEquals(720, planning.schedules().single().startMinute)
+            planning.save(com.example.util.simpletimetracker.domain.planning.PlanException(plan.id, "2026-10-13", startMinute = 600))
+            planning.save(com.example.util.simpletimetracker.domain.planning.PlanException(plan.id, "2026-10-15", startMinute = 600))
+            planning.editSchedule(plan.id, "2026-10-14", plan.copy(firstDate = "2026-10-14", startMinute = 780), true)
+            assertEquals("2026-10-13", planning.exceptions().single().date)
+            assertEquals(2, planning.schedules().size)
+            planning.clear()
+            assertTrue(planning.tasks().isEmpty())
+            assertTrue(planning.schedules().isEmpty())
+            assertTrue(planning.exceptions().isEmpty())
+            assertTrue(planning.links().isEmpty())
+        }
+    }
+    @Test
+    fun focusExitGuardUsesSessionIdentityAndWholeMinuteNodes() = runBlocking {
+        withDatabase { db, repo, _ ->
+            val type = requireNotNull(db.recordTypeDao().get(1))
+            db.recordTypeDao().insert(type.copy(timerPolicy = "{\"mode\":\"FOCUS_EXIT\",\"intervalMinutes\":0}"))
+            val active = requireNotNull(repo.start(RunningRecord(1, start, "", emptyList()), start).started)
+            val session = requireNotNull(active.timerSession)
+            val rejected = runCatching { repo.stop(1, start + 8 * 60_000) }.exceptionOrNull() as RecordMutationException
+            assertEquals(RecordMutationError.FOCUS_CONFIRMATION_REQUIRED, rejected.reason)
+            assertEquals(0, db.recordDao().getAll().size)
+            repo.stop(1, start + 15 * 60_000 + 59_999, session.id)
+            assertEquals(959_999L, recordMapper.map(db.recordDao().getAll().single()).duration)
+            val next = requireNotNull(repo.start(RunningRecord(1, start + 20 * 60_000, "", emptyList()), start + 20 * 60_000).started)
+            val stale = runCatching { repo.stop(1, start + 28 * 60_000, session.id, true) }.exceptionOrNull() as RecordMutationException
+            assertEquals(RecordMutationError.NOT_FOUND, stale.reason)
+            repo.stop(1, start + 42 * 60_000, requireNotNull(next.timerSession).id, true)
+            assertEquals(2, db.recordDao().getAll().size)
+        }
+    }
+
+    @Test
+    fun planAssociationSurvivesStopSplitAndMergeWithoutDuplicatingAllocation() = runBlocking {
+        withDatabase { db, repo, _ ->
+            val planning = com.example.util.simpletimetracker.data_local.planning.PlanningRepoImpl(db, com.example.util.simpletimetracker.domain.backup.interactor.DataRestoreGate())
+            val schedule = com.example.util.simpletimetracker.domain.planning.PlanSchedule(title = "reading plan", firstDate = "2023-11-14", startMinute = 9 * 60, durationMinutes = 30, zoneId = "UTC")
+            planning.save(schedule)
+            val date = com.example.util.simpletimetracker.domain.planning.PlanCalendar.date("2023-11-14", "UTC").timeInMillis
+            val plan = com.example.util.simpletimetracker.domain.planning.PlanCalendar.occurrences(listOf(schedule), emptyList(), date, date + 86_400_000).single()
+            repo.start(RunningRecord(1, start, "", emptyList()), start, plan = plan)
+            repo.stop(1, start + 22 * 60_000)
+            val saved = recordMapper.map(db.recordDao().getAll().single()).copy(recovery = com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_TIRED)
+            repo.save(listOf(saved))
+            repo.split(saved, start + 8 * 60_000, attachmentsBefore = false)
+            val split = db.recordDao().getAll().map(recordMapper::map).sortedBy { it.timeStarted }
+            assertNull(split[0].recovery)
+            assertEquals(com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_TIRED, split[1].recovery)
+            assertEquals(22 * 60_000L, planning.links().sumOf { requireNotNull(it.timeEnded) - it.timeStarted })
+            repo.merge(split[1], split[0].id, null)
+            assertEquals(1, db.recordDao().getAll().size)
+            assertEquals(setOf(split[1].id), planning.links().map { it.recordId }.toSet())
+            assertEquals(22 * 60_000L, planning.links().sumOf { requireNotNull(it.timeEnded) - it.timeStarted })
+        }
+    }
+
+    @Test
+    fun changingTemplatePolicyOnlyAffectsTheNextTimerAndMuteIsSessionBound() = runBlocking {
+        withDatabase { db, repo, _ ->
+            val type = requireNotNull(db.recordTypeDao().get(1))
+            db.recordTypeDao().insert(type.copy(timerPolicy = "{\"mode\":\"INTERVAL\",\"intervalMinutes\":30}"))
+            val active = requireNotNull(repo.start(RunningRecord(1, start, "", emptyList()), start).started)
+            db.recordTypeDao().insert(type.copy(timerPolicy = "{\"mode\":\"INTERVAL\",\"intervalMinutes\":90}"))
+            assertEquals(30, runningMapper.map(requireNotNull(db.runningRecordDao().get(1))).timerSession?.policy?.intervalMinutes)
+            repo.muteReminder(requireNotNull(active.timerSession).id)
+            assertEquals(true, runningMapper.map(requireNotNull(db.runningRecordDao().get(1))).timerSession?.muted)
+            repo.stop(1, start + 760000)
+            repo.start(RunningRecord(1, start + 800000, "", emptyList()), start + 800000)
+            repo.muteReminder(requireNotNull(active.timerSession).id)
+            val current = runningMapper.map(requireNotNull(db.runningRecordDao().get(1))).timerSession
+            assertEquals(false, current?.muted)
+            assertEquals(90, current?.policy?.intervalMinutes)
+        }
+    }
     private val start = 1_700_000_000_123L
     private val recordMapper = RecordDataLocalMapper()
     private val runningMapper = RunningRecordDataLocalMapper()
@@ -51,7 +138,7 @@ class LifeClockRecordMutationTest {
             repo.stop(1, start + 760_123)
             val saved = recordMapper.map(db.recordDao().getAll().single())
             assertEquals(760_123L, saved.timeEnded - saved.timeStarted)
-            assertEquals(RecordReviewState.PENDING, saved.reviewState)
+            assertEquals(RecordReviewState.CONFIRMED, saved.reviewState)
             assertEquals(running.tags, saved.tags)
             assertEquals("reading", saved.summary)
             assertNull(saved.zoneId)
@@ -203,8 +290,8 @@ class LifeClockRecordMutationTest {
         val db = Room.inMemoryDatabaseBuilder(InstrumentationRegistry.getInstrumentation().targetContext, AppDatabase::class.java).build()
         try {
             for (id in 1L..3L) db.recordTypeDao().insert(RecordTypeDBO(id, "type $id", "", 0, "", false, defaultDuration = 0, note = ""))
-            val records = RecordRepoImpl(db.recordDao(), recordMapper)
-            val running = RunningRecordRepoImpl(db.runningRecordDao(), runningMapper)
+            val records = RecordRepoImpl(db.recordDao(), db, recordMapper)
+            val running = RunningRecordRepoImpl(db.runningRecordDao(), db, runningMapper)
             val repo = RecordMutationRepoImpl(
                 db, records, running, recordMapper, runningMapper, RecordToRecordTagDataLocalMapper(),
                 RunningRecordToRecordTagDataLocalMapper(), RecordTimeValidator(), CurrentTimestampProvider(),

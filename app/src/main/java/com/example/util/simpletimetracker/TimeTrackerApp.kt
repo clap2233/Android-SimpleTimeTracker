@@ -14,6 +14,9 @@ class TimeTrackerApp : Application() {
     @javax.inject.Inject
     lateinit var fullBackupRepo: com.example.util.simpletimetracker.domain.backup.repo.FullBackupRepo
 
+    @javax.inject.Inject
+    lateinit var timerExitPrompt: com.example.util.simpletimetracker.core.interactor.TimerExitPromptImpl
+
     override fun onCreate() {
         super.onCreate()
         initLog()

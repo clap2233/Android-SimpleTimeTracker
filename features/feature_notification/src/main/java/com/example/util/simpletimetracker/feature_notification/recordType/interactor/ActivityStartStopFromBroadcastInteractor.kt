@@ -12,6 +12,7 @@ import com.example.util.simpletimetracker.domain.record.interactor.AddRunningRec
 import com.example.util.simpletimetracker.domain.record.interactor.RemoveRunningRecordMediator
 import com.example.util.simpletimetracker.domain.record.interactor.RunningRecordInteractor
 import com.example.util.simpletimetracker.domain.record.model.RecordBase
+import com.example.util.simpletimetracker.domain.record.model.operationIdentity
 import com.example.util.simpletimetracker.domain.recordTag.interactor.NeedTagValueSelectionInteractor
 import com.example.util.simpletimetracker.domain.recordType.interactor.RecordTypeInteractor
 import com.example.util.simpletimetracker.feature_notification.activitySwitch.manager.NotificationControlsManager
@@ -38,12 +39,14 @@ class ActivityStartStopFromBroadcastInteractor @Inject constructor(
 
     suspend fun onActionActivityStop(
         typeId: Long,
+        expectedSessionId: String,
     ) {
         val runningRecord = runningRecordInteractor.get(typeId) ?: run {
             notificationTypeInteractor.checkAndHide(typeId)
             return // Not running.
         }
 
+        if (runningRecord.operationIdentity() != expectedSessionId) return
         removeRunningRecordMediator.removeWithRecordAdd(
             runningRecord = runningRecord,
         )
@@ -55,7 +58,7 @@ class ActivityStartStopFromBroadcastInteractor @Inject constructor(
         typesShift: Int,
     ) {
         if (selectedTypeId == REPEAT_BUTTON_ITEM_ID) {
-            recordRepeatInteractor.repeat()
+            recordRepeatInteractor.repeat(expectedSessionId = from.sessionId)
             return
         }
 
@@ -64,6 +67,7 @@ class ActivityStartStopFromBroadcastInteractor @Inject constructor(
             // Switch controls are updated separately right from here,
             // so no need to update after record change.
             updateNotificationSwitch = false,
+            expectedSessionId = from.sessionId,
             commentInputAvailable = false, // TODO open activity? Or RemoteInput?
         ) {
             val preselectedTags = it.preselectedTags
@@ -290,6 +294,7 @@ class ActivityStartStopFromBroadcastInteractor @Inject constructor(
             comment = "",
             tags = selectedTags,
             useSelectedTags = true,
+            expectedSessionId = from.sessionId,
         )
     }
 

@@ -49,11 +49,14 @@ data class WeekReviewScreen(
     val writeToken: Long,
     val runningRecords: List<RunningRecord>,
     val comparisonRecords: List<Record>,
+    val plans: List<com.example.util.simpletimetracker.domain.planning.PlanOccurrence>,
+    val planLinks: List<com.example.util.simpletimetracker.domain.planning.PlanRecordLink>,
 )
 
 @HiltViewModel
 class WeekReviewViewModel @Inject constructor(
     private val reviews: ReviewRepo,
+    private val planning: com.example.util.simpletimetracker.domain.planning.PlanningRepo,
     private val records: RecordInteractor,
     private val mutations: RecordMutationRepo,
     private val running: RunningRecordInteractor,
@@ -98,7 +101,10 @@ class WeekReviewViewModel @Inject constructor(
     fun refresh() {
         if (busy.value == true) return
         loading?.cancel()
-        loading = viewModelScope.launch { load() }
+        loading = viewModelScope.launch {
+            busy.value = true
+            try { load() } finally { busy.value = false }
+        }
     }
 
     fun moveWeek(amount: Int) {
@@ -273,6 +279,8 @@ class WeekReviewViewModel @Inject constructor(
                 shortcuts.getAll().filter { it.target is RecordShortcut.Target.Record },
                 reviews.getTrials().filter { it.reviewId == review.id && review.id != 0L }, all, token, active,
                 withContext(Dispatchers.Default) { calculator.comparisonRecords(all, now) },
+                com.example.util.simpletimetracker.domain.planning.PlanCalendar.occurrences(planning.schedules(), planning.exceptions(), calculator.days(week, zoneId).first().start, calculator.days(week, zoneId).last().end),
+                planning.links(),
             )
             if (gate.canWrite(token)) screen.value = data
         } catch (error: CancellationException) {

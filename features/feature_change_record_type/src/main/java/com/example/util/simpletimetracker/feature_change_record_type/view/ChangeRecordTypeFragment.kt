@@ -180,6 +180,10 @@ class ChangeRecordTypeFragment :
     }
 
     override fun initUx(): Unit = with(binding) {
+        lifeClockTimerPolicy.setOnClickListener {
+            com.example.util.simpletimetracker.core.view.TimerPolicyEditor.show(requireContext(), viewModel.timerPolicy.value, false) { viewModel.timerPolicy.value = requireNotNull(it) }
+        }
+        viewModel.timerPolicy.observe(viewLifecycleOwner) { lifeClockTimerPolicy.text = "计时节奏：" + com.example.util.simpletimetracker.core.view.TimerPolicyEditor.label(it) }
         etChangeRecordTypeName.doAfterTextChanged { viewModel.onNameChange(it.toString()) }
         etChangeRecordTypeNote.doAfterTextChanged { viewModel.onNoteChange(it.toString()) }
         fieldChangeRecordTypeColor.setOnClick(viewModel::onColorChooserClick)

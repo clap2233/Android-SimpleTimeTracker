@@ -16,6 +16,7 @@ class RunningRecordDataLocalMapper @Inject constructor() {
             summary = dbo.runningRecord.summary,
             zoneId = dbo.runningRecord.zoneId,
             templateId = dbo.runningRecord.templateId,
+            timerSession = com.example.util.simpletimetracker.data_local.planning.PlanningJson.session(dbo.runningRecord.timerSession),
         )
     }
 
@@ -28,6 +29,7 @@ class RunningRecordDataLocalMapper @Inject constructor() {
             summary = domain.summary,
             zoneId = domain.zoneId,
             templateId = domain.templateId,
+            timerSession = domain.timerSession?.let(com.example.util.simpletimetracker.data_local.planning.PlanningJson::encode),
         )
     }
 

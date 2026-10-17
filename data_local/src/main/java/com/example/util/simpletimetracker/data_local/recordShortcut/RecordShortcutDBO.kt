@@ -27,4 +27,6 @@ data class RecordShortcutDBO(
 
     @ColumnInfo(name = "summary", defaultValue = "''")
     val summary: String = "",
+    @ColumnInfo(name = "timer_policy")
+    val timerPolicy: String? = null,
 )

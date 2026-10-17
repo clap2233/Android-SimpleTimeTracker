@@ -10,9 +10,11 @@ import com.example.util.simpletimetracker.domain.record.repo.RecordMutationFeedb
 import com.example.util.simpletimetracker.domain.record.model.RecordMutationException
 import com.example.util.simpletimetracker.domain.base.CurrentTimestampProvider
 import javax.inject.Inject
+import com.example.util.simpletimetracker.domain.record.model.operationIdentity
 
 class RemoveRunningRecordMediator @Inject constructor(
     private val mutations: RecordMutationRepo,
+    private val exitPrompt: com.example.util.simpletimetracker.domain.rhythm.TimerExitPrompt = com.example.util.simpletimetracker.domain.rhythm.TimerExitPrompt.Decline,
     private val feedback: RecordMutationFeedback,
     private val clock: CurrentTimestampProvider,
     private val runningRecordInteractor: RunningRecordInteractor,
@@ -27,8 +29,10 @@ class RemoveRunningRecordMediator @Inject constructor(
         updateNotificationSwitch: Boolean = true,
         timeEnded: Long? = null, // null - take current time.
     ) {
+        val session = runningRecord.timerSession
+        if (session != null && session.policy.needsExitConfirmation(session.startedAt, clock.get()) && !exitPrompt.confirm(session, false)) return
         val change = try {
-            mutations.stop(runningRecord.id, timeEnded ?: clock.get())
+            mutations.stop(runningRecord.id, timeEnded ?: clock.get(), runningRecord.operationIdentity(), session != null)
         } catch (error: RecordMutationException) {
             feedback.show(error.reason)
             return

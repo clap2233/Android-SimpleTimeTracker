@@ -143,6 +143,10 @@ class ChangeShortcutFragment :
     }
 
     override fun initUx(): Unit = with(binding) {
+        lifeClockTimerPolicy.setOnClickListener {
+            com.example.util.simpletimetracker.core.view.TimerPolicyEditor.show(requireContext(), viewModel.timerPolicy.value, true) { viewModel.timerPolicy.value = it }
+        }
+        viewModel.timerPolicy.observe(viewLifecycleOwner) { lifeClockTimerPolicy.text = "计时节奏：" + com.example.util.simpletimetracker.core.view.TimerPolicyEditor.label(it) }
         fieldChangeShortcutType.setOnClick(viewModel::onTypeChooserClick)
         fieldChangeShortcutTag.setOnClick(viewModel::onTagChooserClick)
         fieldChangeShortcutComment.setOnClick(viewModel::onCommentChooserClick)

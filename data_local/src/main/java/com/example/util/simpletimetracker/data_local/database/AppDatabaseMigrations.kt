@@ -7,6 +7,19 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 class AppDatabaseMigrations {
 
     companion object {
+        private val migration_37_38 = object : Migration(37, 38) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE records ADD COLUMN recovery TEXT")
+                database.execSQL("ALTER TABLE runningRecords ADD COLUMN timer_session TEXT")
+                database.execSQL("ALTER TABLE recordTypes ADD COLUMN timer_policy TEXT")
+                database.execSQL("ALTER TABLE recordShortcuts ADD COLUMN timer_policy TEXT")
+                database.execSQL("CREATE TABLE IF NOT EXISTS planTasks (id TEXT NOT NULL, content_json TEXT NOT NULL, PRIMARY KEY(id))")
+                database.execSQL("CREATE TABLE IF NOT EXISTS planSchedules (id TEXT NOT NULL, content_json TEXT NOT NULL, PRIMARY KEY(id))")
+                database.execSQL("CREATE TABLE IF NOT EXISTS planExceptions (id TEXT NOT NULL, content_json TEXT NOT NULL, PRIMARY KEY(id))")
+                database.execSQL("CREATE TABLE IF NOT EXISTS planRecordLinks (id TEXT NOT NULL, content_json TEXT NOT NULL, PRIMARY KEY(id))")
+            }
+        }
+
         val migrations: List<Migration>
             get() = listOf(
                 migration_1_2,
@@ -45,6 +58,7 @@ class AppDatabaseMigrations {
                 migration_34_35,
                 migration_35_36,
                 migration_36_37,
+                migration_37_38,
             )
 
         private val migration_36_37 = object : Migration(36, 37) {

@@ -10,4 +10,5 @@ data class RecordType(
     val defaultDuration: Long,
     val note: String,
     val hidden: Boolean = false,
+    val timerPolicy: com.example.util.simpletimetracker.domain.rhythm.TimerPolicy = com.example.util.simpletimetracker.domain.rhythm.TimerPolicy(),
 )

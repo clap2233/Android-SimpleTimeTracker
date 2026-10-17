@@ -47,9 +47,11 @@ class ClearDataInteractor @Inject constructor(
     private val favouriteRecordsFilterRepo: FavouriteRecordsFilterRepo,
     private val recordShortcutToRecordTagRepo: RecordShortcutToRecordTagRepo,
     private val recordTypeToFavouriteCommentRepo: RecordTypeToFavouriteCommentRepo,
+    private val planningRepo: com.example.util.simpletimetracker.domain.planning.PlanningRepo,
 ) {
 
     suspend fun execute() {
+        planningRepo.clear()
         recordTypeRepo.clear()
         recordRepo.clear()
         recordShortcutRepo.clear()

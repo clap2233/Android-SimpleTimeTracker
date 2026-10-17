@@ -41,4 +41,7 @@ data class RecordDBO(
 
     @ColumnInfo(name = "template_id")
     val templateId: Long? = null,
+
+    @ColumnInfo(name = "recovery")
+    val recovery: String? = null,
 )

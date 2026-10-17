@@ -4,4 +4,5 @@ data class NotificationActivityParams(
     val title: String,
     val subtitle: String,
     val isDarkTheme: Boolean,
+    val sessionId: String? = null,
 )

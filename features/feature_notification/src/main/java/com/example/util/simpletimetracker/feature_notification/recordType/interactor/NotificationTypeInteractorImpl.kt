@@ -29,6 +29,7 @@ import com.example.util.simpletimetracker.feature_notification.activitySwitch.ma
 import com.example.util.simpletimetracker.feature_notification.core.NotificationCommonMapper
 import com.example.util.simpletimetracker.feature_notification.recordType.manager.NotificationTypeManager
 import com.example.util.simpletimetracker.feature_notification.recordType.manager.NotificationTypeParams
+import com.example.util.simpletimetracker.domain.record.model.operationIdentity
 import javax.inject.Inject
 
 class NotificationTypeInteractorImpl @Inject constructor(
@@ -279,6 +280,7 @@ class NotificationTypeInteractorImpl @Inject constructor(
                 showSeconds = showSeconds,
             ).let { resourceRepo.getString(R.string.notification_time_started, it) },
             startedTimeStamp = runningRecord.timeStarted,
+            sessionId = runningRecord.operationIdentity(),
             totalDuration = dailyCurrent.let {
                 if (it.durationDiffersFromCurrent) it.duration else null
             },

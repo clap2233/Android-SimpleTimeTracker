@@ -85,6 +85,8 @@ class ChangeShortcutViewModel @Inject constructor(
     private val typesCache = suspendLazy { recordTypeInteractor.getAll() }
     private val tagCache = suspendLazy { recordTagInteractor.getAll() }
 
+    val timerPolicy = MutableLiveData<com.example.util.simpletimetracker.domain.rhythm.TimerPolicy?>(null)
+
     private var initialized: Boolean = false
     private var updateJob: Job? = null
     private val shortcutId: Long get() = (extra as? ChangeShortcutParams.Change)?.id.orZero()
@@ -200,7 +202,8 @@ class ChangeShortcutViewModel @Inject constructor(
     // TODO move tag to delegates
     // TODO add ShortcutView and replace preview with it, so hint would be visible
     fun onSaveClick() {
-        val target = buildTarget() ?: return
+        val raw = buildTarget() ?: return
+        val target = if (raw is RecordShortcut.Target.Record) raw.copy(timerPolicy = timerPolicy.value) else raw
         saveButtonEnabled.set(false)
         viewModelScope.launch {
             if (shortcutId != 0L) {
@@ -343,6 +346,7 @@ class ChangeShortcutViewModel @Inject constructor(
             targetMode = target.mode
             when (target) {
                 is RecordShortcut.Target.Record -> {
+                    timerPolicy.value = target.timerPolicy
                     recordTypeId = target.typeId
                     recordTags = target.tags
                     commentSelectionViewModelDelegate.newComment = target.comment

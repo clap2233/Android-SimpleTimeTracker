@@ -23,6 +23,7 @@ import com.example.util.simpletimetracker.feature_notification.activitySwitch.ma
 import com.example.util.simpletimetracker.feature_notification.activitySwitch.manager.NotificationActivitySwitchParams
 import com.example.util.simpletimetracker.feature_notification.core.NotificationCommonMapper
 import com.example.util.simpletimetracker.feature_views.viewData.RecordTypeIcon
+import com.example.util.simpletimetracker.domain.record.model.operationIdentity
 import javax.inject.Inject
 
 class NotificationActivitySwitchInteractorImpl @Inject constructor(
@@ -201,6 +202,7 @@ class NotificationActivitySwitchInteractorImpl @Inject constructor(
             untrackedStartedTimeStamp = untrackedTimeStarted,
             prevRecordDuration = prevRecordDuration,
             controls = controls,
+            sessionId = runningRecords.singleOrNull()?.operationIdentity() ?: "idle",
         ).let(manager::show)
     }
 

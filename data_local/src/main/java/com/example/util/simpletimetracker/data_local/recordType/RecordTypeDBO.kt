@@ -36,4 +36,6 @@ data class RecordTypeDBO(
 
     @ColumnInfo(name = "note")
     val note: String,
+    @ColumnInfo(name = "timer_policy")
+    val timerPolicy: String? = null,
 )

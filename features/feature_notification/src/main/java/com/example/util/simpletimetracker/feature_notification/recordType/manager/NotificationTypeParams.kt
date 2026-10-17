@@ -14,4 +14,5 @@ data class NotificationTypeParams(
     val goalTime: String,
     val stopButton: String,
     val controls: NotificationControlsParams,
+    val sessionId: String? = null,
 )

@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Typeface
 import android.view.MotionEvent
 import android.view.View
 import com.example.util.simpletimetracker.domain.review.interactor.ReviewTimeBlock
@@ -19,6 +20,9 @@ class WeekReviewGrid(context: Context) : View(context) {
     var zoneId = TimeZone.getDefault().id
     var colors: Map<Long, Int> = emptyMap()
     var textColor: Int = 0xff555555.toInt()
+    var surfaceColor: Int = 0xfffffefa.toInt()
+    var accentColor: Int = 0xff52745b.toInt()
+    var selectedDay: Int = -1
     var onBlock: (ReviewTimeBlock) -> Unit = {}
     var onDay: (Int) -> Unit = {}
     var onGap: (Int, Int) -> Unit = { _, _ -> }
@@ -28,19 +32,26 @@ class WeekReviewGrid(context: Context) : View(context) {
     init {
         isClickable = true
         contentDescription = "完整七天、00:00 至 24:00 周视图；也可通过本周经历按钮逐条查看。"
-        minimumHeight = (630 * density).toInt()
+        minimumHeight = (360 * density).toInt()
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val data = stats ?: return
         hits.clear()
-        val left = 34 * density
-        val top = 32 * density
-        val column = (width - left) / 7
+        val left = 30 * density
+        val top = 48 * density
+        val column = (width - left - 4 * density) / 7
         val hour = (height - top - 18 * density) / 24
         val cutoff = data.days.first().start + data.elapsed
         val futureCalendar = Calendar.getInstance(TimeZone.getTimeZone(zoneId))
+        paint.style = Paint.Style.FILL
+        data.days.forEachIndexed { index, _ ->
+            paint.color = surfaceColor
+            paint.alpha = if (index == selectedDay) 255 else 150
+            canvas.drawRoundRect(left + index * column + density, top, left + (index + 1) * column - density,
+                top + 24 * hour, 4 * density, 4 * density, paint)
+        }
         paint.color = textColor
         paint.alpha = 15
         paint.style = Paint.Style.FILL
@@ -51,22 +62,37 @@ class WeekReviewGrid(context: Context) : View(context) {
                 canvas.drawRect(left + index * column, top + minute / 60 * hour, left + (index + 1) * column, top + 24 * hour, paint)
             }
         }
-        paint.textSize = 10 * density
+        paint.textSize = 10 * resources.displayMetrics.scaledDensity
         paint.color = textColor
         paint.alpha = 255
         paint.style = Paint.Style.FILL
         for (i in 0..24) {
             val y = top + i * hour
-            canvas.drawText("%02d".format(i), 0f, y + 3 * density, paint)
-            paint.alpha = 35
-            canvas.drawLine(left, y, width.toFloat(), y, paint)
+            if (i % 3 == 0) canvas.drawText("%02d".format(i), 0f, y + 3 * density, paint)
+            paint.alpha = if (i % 3 == 0) 26 else 9
+            canvas.drawLine(left, y, width - 4 * density, y, paint)
             paint.alpha = 255
         }
         data.days.forEachIndexed { i, day ->
-            canvas.drawText(day.date.substring(5), left + i * column + 2 * density, 14 * density, paint)
-            if (day.end - day.start != 86_400_000L) canvas.drawText("DST", left + i * column, 27 * density, paint)
-            paint.alpha = 35
-            canvas.drawLine(left + i * column, top, left + i * column, top + 24 * hour, paint)
+            val x = left + (i + 0.5f) * column
+            paint.textAlign = Paint.Align.CENTER
+            paint.alpha = 160
+            canvas.drawText("一二三四五六日"[i].toString(), x, 12 * density, paint)
+            if (i == selectedDay) {
+                paint.color = accentColor
+                paint.alpha = 255
+                canvas.drawCircle(x, 30 * density, 12 * density, paint)
+                paint.color = surfaceColor
+            } else {
+                paint.color = textColor
+            }
+            paint.alpha = 255
+            paint.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            canvas.drawText(day.date.takeLast(2), x, 34 * density, paint)
+            paint.typeface = Typeface.DEFAULT
+            paint.color = textColor
+            paint.textAlign = Paint.Align.LEFT
+            if (day.end - day.start != 86_400_000L) canvas.drawCircle(x, 44 * density, 2 * density, paint)
             paint.alpha = 255
         }
         val zone = TimeZone.getTimeZone(zoneId)
@@ -111,14 +137,14 @@ class WeekReviewGrid(context: Context) : View(context) {
                 paint.color = colors[block.typeId] ?: 0xffb0b0b0.toInt()
                 paint.alpha = if (block.state == ReviewTimeState.PENDING) 130 else 255
                 paint.style = Paint.Style.FILL
-                canvas.drawRect(rect, paint)
+                canvas.drawRoundRect(rect, 2 * density, 2 * density, paint)
                 if (block.state != ReviewTimeState.CONFIRMED) {
                     paint.color = textColor
                     paint.alpha = 255
                     paint.style = Paint.Style.STROKE
                     paint.strokeWidth = density
                     paint.pathEffect = if (block.state == ReviewTimeState.PENDING) android.graphics.DashPathEffect(floatArrayOf(3 * density, 2 * density), 0f) else null
-                    canvas.drawRect(rect, paint)
+                    canvas.drawRoundRect(rect, 2 * density, 2 * density, paint)
                     paint.pathEffect = null
                 }
                 hits.add(rect to block)
@@ -135,9 +161,9 @@ class WeekReviewGrid(context: Context) : View(context) {
             if (selected != null) {
                 performClick()
             } else {
-                val left = 34 * density
-                val top = 32 * density
-                val day = ((event.x - left) / ((width - left) / 7)).toInt().coerceIn(0, 6)
+                val left = 30 * density
+                val top = 48 * density
+                val day = ((event.x - left) / ((width - left - 4 * density) / 7)).toInt().coerceIn(0, 6)
                 if (event.y < top) {
                     onDay(day)
                 } else {

@@ -149,6 +149,7 @@ class ChangeRecordViewModel @Inject constructor(
             typeId = newTypeId, timeStarted = newTimeStarted, timeEnded = newTimeEnded,
             comment = commentSelectionViewModelDelegate.newComment, tags = newTags,
             summary = detailDraft.summary,
+            recovery = detailDraft.recovery.value,
         )
     }
 
@@ -179,8 +180,8 @@ class ChangeRecordViewModel @Inject constructor(
         return closed?.let { BoundaryNeighbor(it, false) }
     }
 
-    fun mergePrevious(previousId: Long, tags: List<RecordBase.Tag>) = organize {
-        mutations.merge(editorRecord(), previousId, tags, detailDraft.photos.value.orEmpty())
+    fun mergePrevious(previousId: Long, tags: List<RecordBase.Tag>, recovery: com.example.util.simpletimetracker.domain.rhythm.Recovery?) = organize {
+        mutations.merge(editorRecord().copy(recovery = recovery), previousId, tags, detailDraft.photos.value.orEmpty(), recoveryResolved = true)
     }
 
     fun splitAt(boundary: Long, attachmentsBefore: Boolean) = organize {
@@ -273,6 +274,7 @@ class ChangeRecordViewModel @Inject constructor(
             tags = newTags,
             reviewState = reviewState,
             summary = detailDraft.summary,
+            recovery = detailDraft.recovery.value,
         )
         try {
             mutations.saveDetails(proposal, detailDraft.photos.value.orEmpty())
@@ -350,6 +352,7 @@ class ChangeRecordViewModel @Inject constructor(
 
     override suspend fun initializePreviewViewData() {
         val originalDetails = recordInteractor.get(recordId.orZero())
+        if (detailDraft.ready.value != true) detailDraft.recovery.value = originalDetails?.recovery
         detailDraft.load(originalDetails?.summary.orEmpty(), recordId.orZero(), false)
         when (extra) {
             is ChangeRecordParams.Tracked -> {

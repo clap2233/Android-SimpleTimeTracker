@@ -23,14 +23,14 @@ export function weekStats(s: Snapshot, week: string, zone: string, people: strin
   const byType: Record<string, number> = {}, confirmedByType: Record<string, number> = {};
   for (const b of blocks) { byType[b.typeId] = (byType[b.typeId] ?? 0) + b.end - b.start; if (b.state === 'CONFIRMED') confirmedByType[b.typeId] = (confirmedByType[b.typeId] ?? 0) + b.end - b.start; }
   const confirmed = records.filter(r => r.reviewState === 'CONFIRMED');
-  function scores(id: string) { const values = confirmed.map(r => rating(r, id)); return { distribution: [1, 2, 3, 4, 5].map(v => values.filter(n => n === v).length), ratedCount: values.filter(v => v !== null).length, unratedCount: values.filter(v => v === null).length }; }
+  function scores(id: string, minimum: number) { const values = confirmed.map(r => rating(r, id, minimum)); return { distribution: Array.from({length: 6 - minimum}, (_,i) => i + minimum).map(v => values.filter(n => n === v).length), ratedCount: values.filter(v => v !== null).length, unratedCount: values.filter(v => v === null).length }; }
   const recordedUnionMs = blocks.reduce((n, b) => n + b.end - b.start, 0);
   return { days, cutoff, elapsedMs: cutoff - start, recordedUnionMs, unrecordedMs: cutoff - start - recordedUnionMs,
     confirmedMs: duration('CONFIRMED'), pendingMs: duration('PENDING'), runningMs: duration('RUNNING'),
     confirmedEventCount: confirmed.length, byType, confirmedByType, blocks, records,
     repairs: s.records.filter(r => invalid.has(r.id) && r.timeStarted < end && (r.timeEnded > start || r.timeStarted >= start)),
-    happiness: scores(s.ratingTagIds.happinessTagId), meaning: scores(s.ratingTagIds.meaningTagId),
+    happiness: scores(s.ratingTagIds.happinessTagId, 1), meaning: scores(s.ratingTagIds.meaningTagId, -5),
     dailyConfirmedMs: days.map((_, i) => blocks.filter(b => b.day === i && b.state === 'CONFIRMED').reduce((n, b) => n + b.end - b.start, 0)) };
 }
-export function rating(record: Experience, id: string): number | null { const value = record.tags.find(t => t.tagId === id)?.numericValue; return Number.isInteger(value) && value! >= 1 && value! <= 5 ? value! : null; }
+export function rating(record: Experience, id: string, minimum = 1): number | null { const value = record.tags.find(t => t.tagId === id)?.numericValue; return Number.isInteger(value) && value! >= minimum && value! <= 5 ? value! : null; }
 export function usableComparisons(s: Snapshot) { const invalid = repairIds(s); return s.records.filter(r => !invalid.has(r.id)); }

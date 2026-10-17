@@ -13,9 +13,6 @@ class RecordTimeValidator @Inject constructor() {
             if (record.timeEnded <= record.timeStarted) fail(RecordMutationError.EMPTY_INTERVAL)
             if (record.timeEnded > now) fail(RecordMutationError.FUTURE_TIME)
             if (record.timeEnded - record.timeStarted <= 0) fail(RecordMutationError.EMPTY_INTERVAL)
-            if (record.reviewState == RecordReviewState.CONFIRMED && (record.timeEnded - record.timeStarted) % QUARTER != 0L) {
-                fail(RecordMutationError.NOT_QUARTER_HOUR)
-            }
             if (others.any { overlaps(record, it) } || running.any { it.timeStarted < record.timeEnded }) {
                 fail(RecordMutationError.OVERLAP)
             }
@@ -26,7 +23,7 @@ class RecordTimeValidator @Inject constructor() {
     }
 
     fun state(start: Long, end: Long): RecordReviewState =
-        if (end > start && (end - start) % QUARTER == 0L) RecordReviewState.CONFIRMED else RecordReviewState.PENDING
+        if (end > start) RecordReviewState.CONFIRMED else RecordReviewState.PENDING
 
     private fun overlaps(first: Record, second: Record): Boolean =
         second.timeEnded > second.timeStarted && first.timeStarted < second.timeEnded && first.timeEnded > second.timeStarted

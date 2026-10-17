@@ -569,6 +569,8 @@ class NotificationControlsManager @Inject constructor(
     ): PendingIntent {
         val intent = Intent(context, NotificationReceiver::class.java)
         intent.action = action
+        intent.data = android.net.Uri.parse("lifeclock:controls/${android.net.Uri.encode(from.sessionId.orEmpty())}")
+        intent.putExtra("timerSessionId", from.sessionId)
         notificationControlsMapper.mapFromToExtra(from).let { intent.putExtra(ARGS_CONTROLS_FROM, it) }
         (from as? From.ActivityNotification)?.recordTypeId?.let { intent.putExtra(ARGS_TYPE_ID, it) }
         selectedTypeId?.let { intent.putExtra(ARGS_SELECTED_TYPE_ID, it) }
@@ -623,8 +625,9 @@ class NotificationControlsManager @Inject constructor(
     }
 
     sealed interface From {
-        data class ActivityNotification(val recordTypeId: Long) : From
-        data object ActivitySwitch : From
+        val sessionId: String?
+        data class ActivityNotification(val recordTypeId: Long, override val sessionId: String? = null) : From
+        data class ActivitySwitch(override val sessionId: String? = null) : From
     }
 
     private data class RequestCode(

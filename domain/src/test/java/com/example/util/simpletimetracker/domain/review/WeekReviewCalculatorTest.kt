@@ -129,8 +129,8 @@ class WeekReviewCalculatorTest {
                 record(3, monday + 85_000_000, 3_600_000), record(4, monday + 2 * 86_400_000, 900_000),
             ),
         )
-        assertEquals(0L, data.recorded)
-        assertEquals(setOf(1L, 2L, 3L), data.repairs.map { it.id }.toSet())
+        assertEquals(760_000L, data.recorded)
+        assertEquals(setOf(1L, 3L), data.repairs.map { it.id }.toSet())
         assertEquals(listOf(4L), data.future.map { it.id })
     }
 

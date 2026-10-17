@@ -3,11 +3,10 @@
     <string name="life_clock_empty_interval">结束必须晚于开始。</string>
     <string name="life_clock_future_time">这段时间还未发生，不能提前保存。</string>
     <string name="life_clock_overlap">与其他记录重叠，请联动调整共同边界。</string>
-    <string name="life_clock_not_quarter">确认需要正的 15 分钟整数倍，也可以先保存为待整理。</string>
     <string name="life_clock_multiple_running">现有计时存在重叠，请先处理，再开始新活动。</string>
     <string name="life_clock_gap">只能合并相接的活动，请先明确空档的归属。</string>
     <string name="life_clock_tag_conflict">请选择保留哪组数值。</string>
-    <string name="life_clock_invalid_score">快乐和意义只能是 1–5 整数或留空。</string>
+    <string name="life_clock_invalid_score">快乐为 1–5 整数，意义为 −5 至＋5 整数，均可留空。</string>
     <string name="life_clock_record_changed">记录已变化，请重新打开后操作。</string>
     <string name="life_clock_pending">待整理</string>
     <string name="life_clock_confirmed">已确认</string>

@@ -6,5 +6,5 @@ interface NotificationActivityInteractor {
 
     fun cancel()
 
-    suspend fun show()
+    suspend fun show(expectedSessionId: String? = null, scheduledAt: Long? = null)
 }

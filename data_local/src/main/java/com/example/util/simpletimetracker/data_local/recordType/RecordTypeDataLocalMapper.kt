@@ -18,6 +18,7 @@ class RecordTypeDataLocalMapper @Inject constructor() {
             defaultDuration = dbo.defaultDuration,
             note = dbo.note,
             hidden = dbo.hidden,
+            timerPolicy = com.example.util.simpletimetracker.data_local.planning.PlanningJson.policy(dbo.timerPolicy) ?: com.example.util.simpletimetracker.domain.rhythm.TimerPolicy(),
         )
     }
 
@@ -31,6 +32,7 @@ class RecordTypeDataLocalMapper @Inject constructor() {
             defaultDuration = domain.defaultDuration,
             note = domain.note,
             hidden = domain.hidden,
+            timerPolicy = com.example.util.simpletimetracker.data_local.planning.PlanningJson.encode(domain.timerPolicy),
         )
     }
 }

@@ -20,6 +20,14 @@ import org.mockito.kotlin.whenever
 class LifeClockMigrationTest {
 
     @Test
+    fun v3AddsNullableFieldsWithoutChangingExistingTimesOrReviewState() = withDatabase(37) { connection ->
+        connection.execute("INSERT INTO records (id, type_id, time_started, time_ended, comment, tag_id, review_state) VALUES (9, 2, 1000, 761123, 'old notes', 0, 0)")
+        migrate(connection, 37, 38)
+        assertEquals(listOf(listOf(1000, 761123, "old notes", 0, null)), connection.rows("SELECT time_started, time_ended, comment, review_state, recovery FROM records WHERE id = 9"))
+        assertSchemaMatches(connection, 38)
+    }
+
+    @Test
     fun migrationPreservesLegacyDataAndOnlyConfirmsValidPastIntervals() = withDatabase(34) { connection ->
         val start = 1_700_000_000_123L
         val future = System.currentTimeMillis() + 86_400_000

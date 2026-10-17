@@ -13,6 +13,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mockito.kotlin.isNull
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.inOrder
@@ -33,16 +34,18 @@ class AddRunningRecordMediatorTest {
     private val clock = mock<CurrentTimestampProvider>()
     private val subject = AddRunningRecordMediator(mutations, feedback, running, records, broadcast, selection, rules, external, clock)
     private val now = 1_700_000_000_123L
+    @org.junit.Before
+    fun setup() { runBlocking { whenever(running.getAll()).thenReturn(emptyList()) } }
     private fun record(id: Long, start: Long = now) = RunningRecord(id, start, "", emptyList())
 
     @Test
     fun startCommitsBeforePublishingAndUsesTheCapturedSwitchTime() = runBlocking {
         whenever(clock.get()).thenReturn(now)
         val previous = record(1, now - 760_123)
-        whenever(mutations.start(any(), eq(now))).thenReturn(TimerMutation(listOf(previous), record(2)))
+        whenever(mutations.start(any(), eq(now), eq("idle"), eq(false), isNull())).thenReturn(TimerMutation(listOf(previous), record(2)))
         assertTrue(subject.startTimer(2, emptyList(), "", useSelectedTags = true))
         val ordered = inOrder(mutations, broadcast, external)
-        ordered.verify(mutations).start(eq(record(2)), eq(now))
+        ordered.verify(mutations).start(eq(record(2)), eq(now), eq("idle"), eq(false), isNull())
         ordered.verify(broadcast).onActivityStopped(1, emptyList(), "", previous.timeStarted)
         ordered.verify(external).onRunningRecordRemove(1, emptyList(), false, false)
         ordered.verify(broadcast).onActionActivityStarted(2, emptyList(), "")
@@ -52,7 +55,7 @@ class AddRunningRecordMediatorTest {
     @Test
     fun rejectedTransitionDoesNotPublishAStart() = runBlocking {
         whenever(clock.get()).thenReturn(now)
-        whenever(mutations.start(any(), any())).thenThrow(RecordMutationException(RecordMutationError.OVERLAP))
+        whenever(mutations.start(any(), any(), eq("idle"), eq(false), isNull())).thenThrow(RecordMutationException(RecordMutationError.OVERLAP))
         assertFalse(subject.startTimer(2, emptyList(), "", useSelectedTags = true))
         verify(feedback).show(RecordMutationError.OVERLAP)
         verify(broadcast, never()).onActionActivityStarted(any(), any(), any())
@@ -61,9 +64,18 @@ class AddRunningRecordMediatorTest {
     @Test
     fun duplicateStartDoesNotPublishOrRestartTheTimer() = runBlocking {
         whenever(clock.get()).thenReturn(now)
-        whenever(mutations.start(any(), any())).thenReturn(TimerMutation(emptyList(), null))
+        whenever(mutations.start(any(), any(), eq("idle"), eq(false), isNull())).thenReturn(TimerMutation(emptyList(), null))
         assertFalse(subject.startTimer(2, emptyList(), "", useSelectedTags = true))
         verify(external, never()).onRunningRecordAdd(any(), any(), any())
+    }
+
+    @Test
+    fun staleSwitchFromPreviousNotificationCannotReplaceCurrentTimer() = runBlocking {
+        val current = record(1).copy(timerSession = com.example.util.simpletimetracker.domain.rhythm.TimerSession(startedAt = now, policy = com.example.util.simpletimetracker.domain.rhythm.TimerPolicy()))
+        whenever(running.getAll()).thenReturn(listOf(current))
+        assertFalse(subject.startTimer(2, emptyList(), "", expectedSessionId = "idle"))
+        assertFalse(subject.startTimer(2, emptyList(), "", expectedSessionId = java.util.UUID.randomUUID().toString()))
+        org.mockito.kotlin.verifyNoInteractions(mutations, broadcast, external)
     }
 
     @Test

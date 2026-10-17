@@ -12,10 +12,11 @@ interface RecordMutationRepo {
     suspend fun saveDetails(record: Record, photos: List<com.example.util.simpletimetracker.domain.record.model.RecordPhoto>): Long
     suspend fun editRunningDetails(originalId: Long, record: RunningRecord, photos: List<com.example.util.simpletimetracker.domain.record.model.RecordPhoto>)
     suspend fun save(records: List<Record>): List<Long>
-    suspend fun start(record: RunningRecord, now: Long): TimerMutation
-    suspend fun stop(typeId: Long, now: Long): TimerMutation
+    suspend fun start(record: RunningRecord, now: Long, expectedSessionId: String? = null, allowFocusExit: Boolean = false, plan: com.example.util.simpletimetracker.domain.planning.PlanOccurrence? = null): TimerMutation
+    suspend fun muteReminder(sessionId: String)
+    suspend fun stop(typeId: Long, now: Long, expectedSessionId: String? = null, allowFocusExit: Boolean = false): TimerMutation
     suspend fun editRunning(originalId: Long, record: RunningRecord)
-    suspend fun merge(record: Record, previousId: Long, tags: List<RecordBase.Tag>?, photos: List<RecordPhoto>? = null)
+    suspend fun merge(record: Record, previousId: Long, tags: List<RecordBase.Tag>?, photos: List<RecordPhoto>? = null, recoveryResolved: Boolean = false)
     suspend fun split(record: Record, boundary: Long, attachmentsBefore: Boolean, photos: List<RecordPhoto>? = null)
     suspend fun adjustBoundary(record: Record, neighborId: Long, boundary: Long, previous: Boolean, neighborRunning: Boolean = false, photos: List<RecordPhoto>? = null)
 }

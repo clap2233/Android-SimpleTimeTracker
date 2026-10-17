@@ -1,6 +1,9 @@
 package com.example.util.simpletimetracker.data_local.record
 
 import androidx.room.withTransaction
+import com.example.util.simpletimetracker.domain.record.model.operationIdentity
+import com.example.util.simpletimetracker.data_local.planning.*
+import com.example.util.simpletimetracker.domain.planning.*
 import com.example.util.simpletimetracker.data_local.database.AppDatabase
 import com.example.util.simpletimetracker.data_local.recordTag.RecordToRecordTagDataLocalMapper
 import com.example.util.simpletimetracker.data_local.recordTag.RunningRecordToRecordTagDataLocalMapper
@@ -42,6 +45,7 @@ class RecordMutationRepoImpl @Inject constructor(
         validate(listOf(record), setOf(record.id))
         val id = write(record)
         writePhotos(id, false, photos)
+        PlanLinks.clip(database, id, record.timeStarted, record.timeEnded)
         id
     }
 
@@ -52,68 +56,104 @@ class RecordMutationRepoImpl @Inject constructor(
 
     override suspend fun save(records: List<Record>): List<Long> = mutate {
         validate(records, records.map { it.id }.toSet())
-        records.map { write(it) }
+        records.map { record -> write(record).also { PlanLinks.clip(database, it, record.timeStarted, record.timeEnded) } }
     }
 
-    override suspend fun start(record: RunningRecord, now: Long): TimerMutation = mutate {
+    override suspend fun start(record: RunningRecord, now: Long, expectedSessionId: String?, allowFocusExit: Boolean, plan: PlanOccurrence?): TimerMutation = mutate {
+        if (plan != null) {
+            val schedules = database.planningDao().planSchedules().map { PlanningJson.schedule(it.contentJson) }
+            val exceptions = database.planningDao().planExceptions().map { PlanningJson.exception(it.contentJson) }
+            require(PlanCalendar.occurrences(schedules, exceptions, plan.start, plan.end).any { it.id == plan.id && it.status == PlanStatus.OPEN && it.schedule.kind != PlanKind.BUFFER })
+        }
         val identity = database.lifeClockSettingsDao().get()
         val ratingIds = identity?.let { setOf(it.happinessTagId, it.meaningTagId) }.orEmpty()
-        val started = record.copy(tags = record.tags.filterNot { it.tagId in ratingIds })
+        val policy = record.templateId?.let { database.recordShortcutDao().get(it)?.shortcut?.timerPolicy }
+            ?.let(com.example.util.simpletimetracker.data_local.planning.PlanningJson::policy)
+            ?: com.example.util.simpletimetracker.data_local.planning.PlanningJson.policy(database.recordTypeDao().get(record.id)?.timerPolicy)
+            ?: com.example.util.simpletimetracker.domain.rhythm.TimerPolicy()
+        val started = record.copy(tags = record.tags.filterNot { it.tagId in ratingIds },
+            timerSession = com.example.util.simpletimetracker.domain.rhythm.TimerSession(startedAt = now, policy = policy))
         val active = active()
         if (active.size > 1) fail(RecordMutationError.MULTIPLE_RUNNING)
         val current = active.singleOrNull()
         if (current?.id == record.id && (record.templateId == null || current.templateId == record.templateId)) {
             return@mutate TimerMutation(emptyList(), null)
         }
+        checkExit(current, now, expectedSessionId, allowFocusExit)
         validateRunning(started, now)
         val ended = active.map { ended(it, record.timeStarted) }
         validate(ended, emptySet(), active.map { it.id }.toSet(), now)
         ended.zip(active).forEach { (finished, previous) ->
             val id = write(finished)
             database.recordPhotoDao().transferToRecord(previous.id, id)
+            PlanLinks.finish(database, previous.id, id, finished.timeStarted, finished.timeEnded)
             deleteRunning(previous.id)
         }
         writeRunning(started)
+        if (plan != null) {
+            val link = PlanRecordLink(runningRecordId = started.id, occurrenceId = plan.id, caption = plan.schedule.title, timeStarted = started.timeStarted)
+            database.planningDao().save(PlanRecordLinkDBO(link.id, PlanningJson.encode(link)))
+        }
         TimerMutation(active, started)
     }
 
-    override suspend fun stop(typeId: Long, now: Long): TimerMutation = mutate {
+    override suspend fun stop(typeId: Long, now: Long, expectedSessionId: String?, allowFocusExit: Boolean): TimerMutation = mutate {
         val record = database.runningRecordDao().get(typeId)?.let(runningMapper::map)
             ?: return@mutate TimerMutation(emptyList(), null)
+        checkExit(record, now, expectedSessionId, allowFocusExit)
         val finished = ended(record, now)
         validate(listOf(finished), emptySet(), setOf(typeId), now)
         val id = write(finished)
         database.recordPhotoDao().transferToRecord(typeId, id)
+        PlanLinks.finish(database, typeId, id, finished.timeStarted, finished.timeEnded)
         deleteRunning(typeId)
         TimerMutation(listOf(record), null)
+    }
+
+    override suspend fun muteReminder(sessionId: String): Unit = mutate {
+        val current = active().singleOrNull() ?: return@mutate
+        val session = current.timerSession ?: return@mutate
+        if (session.id == sessionId) writeRunning(current.copy(timerSession = session.copy(muted = true)))
     }
 
     override suspend fun editRunning(originalId: Long, record: RunningRecord) = mutate {
         editRunningInTransaction(originalId, record)
     }
 
+    private fun checkExit(record: RunningRecord?, now: Long, expected: String?, allowed: Boolean) {
+        val session = record?.timerSession
+        if (expected != null && expected != (record?.operationIdentity() ?: "idle")) fail(RecordMutationError.NOT_FOUND)
+        if (session != null && session.policy.needsExitConfirmation(session.startedAt, now) && (!allowed || expected != session.id)) {
+            fail(RecordMutationError.FOCUS_CONFIRMATION_REQUIRED)
+        }
+    }
+
     private suspend fun editRunningInTransaction(originalId: Long, record: RunningRecord) {
         if (database.runningRecordDao().get(originalId) == null) fail(RecordMutationError.NOT_FOUND)
         if (active().any { it.id != originalId }) fail(RecordMutationError.MULTIPLE_RUNNING)
         validateRunning(record, clock.get())
-        writeRunning(record)
+        val session = database.runningRecordDao().get(originalId)?.let(runningMapper::map)?.timerSession
+        writeRunning(record.copy(timerSession = session))
+        PlanLinks.moveRunning(database, originalId, record.id, record.timeStarted)
         if (originalId != record.id) {
             database.recordPhotoDao().transferRunning(originalId, record.id)
             deleteRunning(originalId)
         }
     }
 
-    override suspend fun merge(record: Record, previousId: Long, tags: List<RecordBase.Tag>?, photos: List<RecordPhoto>?) = mutate {
+    override suspend fun merge(record: Record, previousId: Long, tags: List<RecordBase.Tag>?, photos: List<RecordPhoto>?, recoveryResolved: Boolean) = mutate {
         val previous = requireRecord(previousId)
         val original = requireRecord(record.id)
         if (previous.id == original.id || previous.timeStarted >= original.timeStarted) fail(RecordMutationError.GAP)
         if (previous.timeEnded < original.timeStarted || previous.timeEnded < record.timeStarted) fail(RecordMutationError.GAP)
+        if (!recoveryResolved && previous.recovery != null && record.recovery != null && previous.recovery != record.recovery) fail(RecordMutationError.TAG_CONFLICT)
         val chosen = tags ?: mergeTags(previous.tags, record.tags)
         val merged = record.copy(
             timeStarted = previous.timeStarted,
             comment = listOf(previous.comment, record.comment).filter { it.isNotBlank() }.distinct().joinToString("\n"),
             summary = listOf(previous.summary, record.summary).filter { it.isNotBlank() }.distinct().joinToString("＋"),
             tags = chosen,
+            recovery = if (recoveryResolved) record.recovery else record.recovery ?: previous.recovery,
             reviewState = validator.state(previous.timeStarted, record.timeEnded),
         )
         validate(listOf(merged), setOf(record.id, previousId))
@@ -121,6 +161,8 @@ class RecordMutationRepoImpl @Inject constructor(
         photos?.let { writePhotos(record.id, false, it) }
         database.recordPhotoDao().transferRecord(previousId, record.id)
         database.recordToRecordTagDao().deleteAllByRecordId(previousId)
+        PlanLinks.merge(database, previousId, record.id)
+        PlanLinks.clip(database, record.id, merged.timeStarted, merged.timeEnded)
         database.recordDao().delete(previousId)
     }
 
@@ -130,16 +172,21 @@ class RecordMutationRepoImpl @Inject constructor(
         val plain = record.tags.map { it.copy(numericValue = null, ratedAt = null) }
         val before = record.copy(
             id = 0, timeEnded = boundary, tags = if (attachmentsBefore) record.tags else plain,
+            recovery = if (attachmentsBefore) record.recovery else null,
             reviewState = validator.state(record.timeStarted, boundary),
         )
         val after = record.copy(
             timeStarted = boundary, tags = if (attachmentsBefore) plain else record.tags,
+            recovery = if (attachmentsBefore) null else record.recovery,
             reviewState = validator.state(boundary, record.timeEnded),
         )
         validate(listOf(before, after), setOf(record.id))
         write(after)
         photos?.let { writePhotos(record.id, false, it) }
         val beforeId = write(before)
+        PlanLinks.split(database, record.id, beforeId, boundary)
+        PlanLinks.clip(database, beforeId, before.timeStarted, before.timeEnded)
+        PlanLinks.clip(database, record.id, after.timeStarted, after.timeEnded)
         if (attachmentsBefore) database.recordPhotoDao().transferRecord(record.id, beforeId)
     }
 
@@ -155,7 +202,9 @@ class RecordMutationRepoImpl @Inject constructor(
             val changedRunning = next.copy(timeStarted = boundary)
             validateRunning(changedRunning, clock.get(), setOf(record.id))
             write(changed)
+            PlanLinks.clip(database, changed.id, changed.timeStarted, changed.timeEnded)
             writeRunning(changedRunning)
+            PlanLinks.moveRunning(database, next.id, next.id, changedRunning.timeStarted)
             photos?.let { writePhotos(record.id, false, it) }
             return@mutate
         }
@@ -175,7 +224,7 @@ class RecordMutationRepoImpl @Inject constructor(
             )
         }
         validate(changed, setOf(record.id, neighborId))
-        changed.forEach { write(it) }
+        changed.forEach { write(it); PlanLinks.clip(database, it.id, it.timeStarted, it.timeEnded) }
         photos?.let { writePhotos(record.id, false, it) }
     }
 
@@ -225,7 +274,7 @@ class RecordMutationRepoImpl @Inject constructor(
         val ratingIds = settings?.let { setOf(it.happinessTagId, it.meaningTagId) }.orEmpty()
         tags.filter { it.tagId in ratingIds }.forEach {
             val value = it.numericValue
-            if (value != null && (value !in 1.0..5.0 || value % 1.0 != 0.0)) fail(RecordMutationError.INVALID_SCORE)
+            if (value != null && (value !in (if (it.tagId == settings?.meaningTagId) -5.0 else 1.0)..5.0 || value % 1.0 != 0.0)) fail(RecordMutationError.INVALID_SCORE)
         }
     }
 

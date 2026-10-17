@@ -181,6 +181,7 @@ class ChangeRecordFragment :
             Toast.makeText(requireContext(), R.string.life_clock_gap, Toast.LENGTH_LONG).show()
             return@launch
         }
+        var recovery = current.recovery ?: previous.recovery
         val tags = previous.tags.associateBy { it.tagId }.toMutableMap()
         val conflicts = mutableListOf<Pair<RecordBase.Tag, RecordBase.Tag>>()
         current.tags.forEach {
@@ -192,7 +193,7 @@ class ChangeRecordFragment :
         fun choose(index: Int) {
             if (index == conflicts.size) {
                 confirmOperation("${range(previous)}\n${range(current)}\n→ ${range(current.copy(timeStarted = previous.timeStarted))}") {
-                    viewModel.mergePrevious(previous.id, tags.values.toList())
+                    viewModel.mergePrevious(previous.id, tags.values.toList(), recovery)
                 }
                 return
             }
@@ -213,7 +214,14 @@ class ChangeRecordFragment :
                     choose(index + 1)
                 }.show()
         }
-        choose(0)
+        if (previous.recovery != null && current.recovery != null && previous.recovery != current.recovery) {
+            val labels = mapOf(com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_ENERGY to "更有精神", com.example.util.simpletimetracker.domain.rhythm.Recovery.UNCHANGED to "差不多", com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_TIRED to "更累")
+            MaterialAlertDialogBuilder(requireContext()).setTitle("合并后保留哪种恢复感？")
+                .setItems(arrayOf("当前：" + labels[current.recovery], "前一条：" + labels[previous.recovery], "清空")) { _, choice ->
+                    recovery = when (choice) { 0 -> current.recovery; 1 -> previous.recovery; else -> null }
+                    choose(0)
+                }.show()
+        } else choose(0)
     }
 
     private fun prepareSplit() = viewLifecycleOwner.lifecycleScope.launch {

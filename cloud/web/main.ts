@@ -2,6 +2,8 @@ import './style.css';
 import { DateTime } from 'luxon';
 import { validateSnapshot, type Snapshot, type Experience } from '../shared/snapshot.js';
 import { weekStart, weekStats, rating, usableComparisons } from '../shared/statistics.js';
+import { experienceScores, rangeStats, unionMillis } from '../shared/analysis.js';
+import { occurrences } from '../shared/planning.js';
 
 const app = document.querySelector<HTMLElement>('#app')!;
 let token = '', snapshot: Snapshot | undefined, week = '', zone = '', people: string[] = [], environments: string[] = [];
@@ -131,7 +133,7 @@ function render() {
   }
   for (const [name, scores] of [['快乐', stats.happiness], ['意义', stats.meaning]] as const) {
     const group = element('section', '', 'scores'); group.append(element('h3', name), element('p', `${scores.ratedCount} 条已评分 · ${scores.unratedCount} 条未评分`, 'muted'));
-    const bins = element('div', '', 'bins'); scores.distribution.forEach((count,i) => { const bin = element('div'); bin.append(element('strong', String(count)), element('span', `${i+1} 分`)); bins.append(bin); }); group.append(bins); aside.append(group);
+    const bins = element('div', '', 'bins'); scores.distribution.forEach((count,i) => { const bin = element('div'); bin.append(element('strong', String(count)), element('span', `${i + (name === '意义' ? -5 : 1)} 分`)); bins.append(bin); }); group.append(bins); aside.append(group);
   }
   spread.append(aside); app.append(spread);
   const dayRecords = element('section', '', 'day-records'); dayRecords.id = 'day-records'; dayRecords.append(element('h2', `${stats.days[selectedDay].date} 的经历`));
@@ -164,9 +166,42 @@ function render() {
     }
     if(!s.trials.some(t=>t.reviewId===review.id))trials.append(element('p','没有新增尝试','muted'));reflection.append(trials);
   }
-  app.append(reflection, element('footer', '此页只供查看。修改与下一次记录，请回到手机。'));
+  app.append(reflection);
+  renderPlanning(s, stats.days[0].start, stats.days[6].end);
+  app.append(element('footer', '此页只供查看。修改与下一次记录，请回到手机。'));
 }
-function scores(r: Experience) { return `快乐 ${rating(r,snapshot!.ratingTagIds.happinessTagId) ?? '未评分'} / 意义 ${rating(r,snapshot!.ratingTagIds.meaningTagId) ?? '未评分'}`; }
+function scores(r: Experience) {
+  const { happiness, meaning, combined, recovery } = experienceScores(snapshot!, r);
+  const total = combined === null ? '未计算' : combined > 0 ? `+${combined}` : String(combined);
+  return `快乐 ${happiness ?? '未评分'} / 意义 ${meaning ?? '未评分'} / 合计 ${total} / 恢复感 ${recovery === 'MORE_ENERGY' ? '更有精神' : recovery === 'UNCHANGED' ? '差不多' : recovery === 'MORE_TIRED' ? '更累' : '未填写'}`;
+}
+function renderPlanning(s: Snapshot, from: number, until: number) {
+  const stats = rangeStats(s, from, until), panel = element('section', '', 'reflection');
+  panel.append(element('h2', '恢复感与个人节奏'), element('p', '统计本周已确认经历，不随人物／环境筛选变化；未填写保持为空。', 'muted'));
+  const summary = (r: typeof stats.recovery) => `更有精神 ${r.MORE_ENERGY} · 差不多 ${r.UNCHANGED} · 更累 ${r.MORE_TIRED} · 未填写 ${r.unrated}`;
+  panel.append(element('p', summary(stats.recovery)));
+  for (const item of stats.byTemplate) {
+    const name = s.templates.find(t => t.id === item.templateId)?.name || (item.templateId ? '已删除的模板' : '未使用模板');
+    panel.append(element('p', `${name}：${summary(item.recovery)}`));
+  }
+  panel.append(element('h2', '计划与实际经历'), element('p', `计划占用 ${duration(stats.plannedMillis)} · 缓冲 ${duration(stats.bufferMillis)} · 未安排 ${duration(stats.unplannedMillis)}。重叠按区间去重，缓冲单列；空白不等于休息。`, 'muted'));
+  const status = { OPEN: '待进行', DONE: '已完成', SKIPPED: '已跳过', CANCELLED: '已取消' };
+  for (const plan of occurrences(s.planSchedules, s.planExceptions, from, until)) {
+    const row = element('div', '', 'review-choice'), links = s.planRecordLinks.filter(l => l.occurrenceId === plan.id && l.recordId);
+    const actual = unionMillis(links.map(l => ({ start: l.timeStarted, end: l.timeEnded! })), Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
+    const kind = plan.schedule.kind === 'BUFFER' ? '缓冲' : plan.schedule.kind === 'FREE' ? '自由活动' : '计划';
+    row.append(element('h3', `${plan.date} ${DateTime.fromMillis(plan.start, { zone }).toFormat('HH:mm')} · ${plan.schedule.title}`),
+      element('p', `${kind} · ${status[plan.status]} · 预留 ${duration(plan.end - plan.start)} · 关联实际 ${duration(actual)}`));
+    for (const id of [...new Set(links.map(l => l.recordId))]) {
+      const record = s.records.find(r => r.id === id);
+      if (record) row.append(button(`${title(record)} · ${scores(record)}`, () => detail(record.id), 'memory'));
+    }
+    panel.append(row);
+  }
+  panel.append(element('h3', '待办清单'));
+  for (const task of s.planTasks.filter(t => !t.archived)) panel.append(element('p', `${task.important ? '★ ' : ''}${task.title} · ${status[task.status]}${task.deadline ? ` · 截止 ${task.deadline}` : ''}`));
+  app.append(panel);
+}
 function context(r: Experience) { return r.tags.map(t=>snapshot!.tags.find(v=>v.id===t.tagId&&v.purpose!=='GENERAL')?.name).filter(Boolean).join('、'); }
 function showMessage(text: string) { const dialog=element('dialog');dialog.append(element('p',text),button('关闭',()=>dialog.close()));document.body.append(dialog);dialog.addEventListener('close',()=>dialog.remove());dialog.showModal(); }
 function detail(id: string, running = false) {

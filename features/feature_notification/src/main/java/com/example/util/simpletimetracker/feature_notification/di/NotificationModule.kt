@@ -35,6 +35,9 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 interface NotificationModule {
+    @Binds
+    fun planning(impl: com.example.util.simpletimetracker.feature_notification.planning.PlanningReminderImpl): com.example.util.simpletimetracker.domain.planning.PlanningReminder
+
 
     @Binds
     fun bindNotificationTypeInteractor(impl: NotificationTypeInteractorImpl): NotificationTypeInteractor

@@ -23,6 +23,11 @@ interface StatisticsModule {
     companion object {
         @Provides
         @IntoMap
+        @NavigationTabKey(NavigationTab.Planning::class)
+        fun planning(): NavigationTabProvider = NavigationTabProvider { com.example.util.simpletimetracker.feature_statistics.planning.PlanningFragment() }
+
+        @Provides
+        @IntoMap
         @NavigationTabKey(NavigationTab.Statistics::class)
         fun bindNavigationTab(): NavigationTabProvider {
             return NavigationTabProvider { WeekReviewFragment() }

@@ -16,7 +16,7 @@ internal object SnapshotValidation {
     private const val MAX_SAFE_TIME = 9_007_199_254_740_991L
 
     fun validate(root: JsonObject): Set<Long> {
-        if (SnapshotJson.number(root, "schemaVersion") != 1L) throw FullBackupException(FullBackupFailure.UNSUPPORTED_VERSION)
+        if (SnapshotJson.number(root, "schemaVersion") !in 1L..2L) throw FullBackupException(FullBackupFailure.UNSUPPORTED_VERSION)
         uuid(SnapshotJson.text(root, "dataSetId"))
         uuid(SnapshotJson.text(root, "snapshotId"))
         require(time(root, "createdAt") >= 0)
@@ -80,7 +80,7 @@ internal object SnapshotValidation {
                     require(value.isJsonPrimitive && value.asJsonPrimitive.isNumber)
                     val number = value.asDouble
                     require(number.isFinite())
-                    if (id in ratings) require(number in 1.0..5.0 && number % 1.0 == 0.0)
+                    if (id in ratings) require(number in (if (id == meaning && SnapshotJson.number(root, "schemaVersion") >= 2) -5.0 else 1.0)..5.0 && number % 1.0 == 0.0)
                 }
                 it.get("ratedAt")?.takeUnless(JsonElement::isJsonNull)?.let { _ -> time(it, "ratedAt") }
             }
@@ -153,13 +153,14 @@ internal object SnapshotValidation {
                 SnapshotJson.text(it, "description"), softIds(it, "relatedRecordIds"),
             )
         }
-        val repair = repairIds(root)
+        SnapshotV3.validate(root)
+        val repair = repairIds(root, legacy = SnapshotJson.number(root, "schemaVersion") == 1L)
         val declared = softIds(root, "repairRecordIds").toSet()
         require(declared == repair) { "Invalid intervals must be declared for repair" }
-        return repair
+        return repairIds(root)
     }
 
-    fun repairIds(root: JsonObject): Set<Long> {
+    fun repairIds(root: JsonObject, legacy: Boolean = false): Set<Long> {
         val cutoff = SnapshotJson.number(root, "createdAt")
         data class Interval(val id: Long, val start: Long, val end: Long)
         val invalid = mutableSetOf<Long>()
@@ -167,7 +168,7 @@ internal object SnapshotValidation {
             val id = SnapshotJson.id(it, "id")
             val start = time(it, "timeStarted")
             val end = time(it, "timeEnded")
-            if (end <= start || end > cutoff || (SnapshotJson.text(it, "reviewState", "PENDING") == "CONFIRMED" && (end - start) % 900_000 != 0L)) invalid.add(id)
+            if (end <= start || end > cutoff || (legacy && SnapshotJson.text(it, "reviewState", "PENDING") == "CONFIRMED" && (end - start) % 900_000 != 0L)) invalid.add(id)
             Interval(id, start, end)
         }.toMutableList()
         SnapshotJson.objects(SnapshotJson.array(root, "runningRecords")).forEach { intervals.add(Interval(0, time(it, "timeStarted"), cutoff)) }

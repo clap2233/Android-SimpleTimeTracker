@@ -17,6 +17,12 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 interface LifeClockModule {
     @Binds
+    fun bindTimerExitPrompt(impl: com.example.util.simpletimetracker.core.interactor.TimerExitPromptImpl): com.example.util.simpletimetracker.domain.rhythm.TimerExitPrompt
+
+    @Binds
+    fun bindPlanningRepo(impl: com.example.util.simpletimetracker.data_local.planning.PlanningRepoImpl): com.example.util.simpletimetracker.domain.planning.PlanningRepo
+
+    @Binds
     fun bindFullBackupRepo(impl: com.example.util.simpletimetracker.data_local.snapshot.FullBackupRepoImpl): com.example.util.simpletimetracker.domain.backup.repo.FullBackupRepo
 
     @Binds

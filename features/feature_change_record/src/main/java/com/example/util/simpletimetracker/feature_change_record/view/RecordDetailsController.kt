@@ -68,6 +68,11 @@ class RecordDetailsController(
             fun score(id: Long?) = vm.detailValues().firstOrNull { it.tagId == id }?.numericValue?.toInt()?.toString() ?: fragment.getString(R.string.life_clock_unrated)
             entry.lifeClockHappinessButton.text = fragment.getString(R.string.life_clock_happiness_entry_value, score(draft.identity?.happinessTagId))
             entry.lifeClockMeaningButton.text = fragment.getString(R.string.life_clock_meaning_entry_value, score(draft.identity?.meaningTagId))
+            val happy = vm.detailValues().firstOrNull { it.tagId == draft.identity?.happinessTagId }?.numericValue?.toInt()
+            val meaning = vm.detailValues().firstOrNull { it.tagId == draft.identity?.meaningTagId }?.numericValue?.toInt()
+            entry.lifeClockCombinedScore.text = if (happy == null || meaning == null) "两项都填写后显示合计" else "这条经历合计 · " + (happy + meaning).let { if (it > 0) "+$it" else "$it" }
+            entry.lifeClockRecoveryButton.visibility = if (draft.running) android.view.View.GONE else android.view.View.VISIBLE
+            entry.lifeClockRecoveryButton.text = "恢复感 · " + recoveryLabel(draft.recovery.value)
             val count = draft.photos.value.orEmpty().size
             entry.lifeClockPhotosButton.text = if (count == 0) fragment.getString(R.string.life_clock_photo_entry) else fragment.getString(R.string.life_clock_photo_count, count)
             val selected = vm.detailValues().map { it.tagId }.toSet()
@@ -84,7 +89,7 @@ class RecordDetailsController(
             }
         }
         draft.ready.observe(fragment.viewLifecycleOwner) { ready ->
-            listOf(entry.lifeClockHappinessButton, entry.lifeClockMeaningButton, entry.lifeClockPhotosButton, entry.lifeClockPeopleButton, entry.lifeClockEnvironmentButton, entry.lifeClockSummaryInput).forEach { it.isEnabled = ready == true }
+            listOf(entry.lifeClockHappinessButton, entry.lifeClockMeaningButton, entry.lifeClockPhotosButton, entry.lifeClockPeopleButton, entry.lifeClockEnvironmentButton, entry.lifeClockRecoveryButton, entry.lifeClockSummaryInput).forEach { it.isEnabled = ready == true }
             render()
             if (ready == true) refreshCatalog()
         }
@@ -92,9 +97,17 @@ class RecordDetailsController(
             render()
             refreshCatalog()
         }
+        draft.recovery.observe(fragment.viewLifecycleOwner) { render() }
         draft.photos.observe(fragment.viewLifecycleOwner) { render() }
         draft.summaryChanges.observe(fragment.viewLifecycleOwner) { render() }
         draft.error.observe(fragment.viewLifecycleOwner) { message -> toast(message) }
+        entry.lifeClockRecoveryButton.setOnClickListener {
+            val values = listOf<com.example.util.simpletimetracker.domain.rhythm.Recovery?>(null) + com.example.util.simpletimetracker.domain.rhythm.Recovery.entries
+            MaterialAlertDialogBuilder(fragment.requireContext()).setTitle("这段经历之后")
+                .setSingleChoiceItems(values.map(::recoveryLabel).toTypedArray(), values.indexOf(draft.recovery.value)) { dialog, index ->
+                    draft.recovery.value = values[index]; dialog.dismiss()
+                }.setNegativeButton(R.string.cancel, null).show()
+        }
         entry.lifeClockHappinessButton.setOnClickListener { chooseScore(false) }
         entry.lifeClockMeaningButton.setOnClickListener { chooseScore(true) }
         entry.lifeClockPhotosButton.setOnClickListener { photoMenu() }
@@ -103,16 +116,24 @@ class RecordDetailsController(
         entry.lifeClockSummaryInput.doAfterTextChanged { draft.summary = it?.toString().orEmpty() }
     }
 
+    private fun recoveryLabel(value: com.example.util.simpletimetracker.domain.rhythm.Recovery?): String = when (value) {
+        com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_ENERGY -> "更有精神"
+        com.example.util.simpletimetracker.domain.rhythm.Recovery.UNCHANGED -> "差不多"
+        com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_TIRED -> "更累"
+        null -> "未填写"
+    }
+
     private fun chooseScore(meaning: Boolean) {
         val vm = model()
         val identity = vm.detailDraft.identity ?: return
         val id = if (meaning) identity.meaningTagId else identity.happinessTagId
-        val items = arrayOf(fragment.getString(R.string.life_clock_empty), "1", "2", "3", "4", "5")
-        val current = vm.detailValues().firstOrNull { it.tagId == id }?.numericValue?.toInt() ?: 0
+        val values = listOf<Int?>(null) + (if (meaning) -5..5 else 1..5).toList()
+        val items = values.map { it?.toString() ?: fragment.getString(R.string.life_clock_empty) }.toTypedArray()
+        val current = values.indexOf(vm.detailValues().firstOrNull { it.tagId == id }?.numericValue?.toInt())
         MaterialAlertDialogBuilder(fragment.requireContext())
             .setTitle(if (meaning) R.string.life_clock_meaning else R.string.life_clock_happiness)
             .setSingleChoiceItems(items, current) { dialog, index ->
-                vm.setDetailScore(id, index.takeIf { it > 0 })
+                vm.setDetailScore(id, values[index])
                 dialog.dismiss()
             }.setNegativeButton(R.string.cancel, null).show()
     }

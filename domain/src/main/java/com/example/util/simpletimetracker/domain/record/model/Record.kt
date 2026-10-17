@@ -13,6 +13,7 @@ data class Record(
     val summary: String = "",
     val zoneId: String? = TimeZone.getDefault().id,
     val templateId: Long? = null,
+    val recovery: com.example.util.simpletimetracker.domain.rhythm.Recovery? = null,
 ) : RecordBase {
 
     override val typeIds: List<Long> = listOf(typeId)

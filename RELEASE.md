@@ -1,10 +1,10 @@
-# UI2 界面更新与可复现构建
+# V3 测试候选版与可复现构建
 
-当前版本：`1.59-life-clock-ui2`，versionCode 158，数据库 37，minSdk 21／targetSdk 35。正式候选包使用 `app.lifetimeclock.android`、既有发布证书及 R8 压缩；开发包仍使用 `.debug` 和既有开发证书。历史数据库迁移未修改，UI2 可以覆盖升级已安装的 RC1／RC2／UI1 正式签名包。
+当前版本：`1.59-life-clock-v3`，versionCode 160，数据库 38，minSdk 21／targetSdk 35。正式候选包使用 `app.lifetimeclock.android`、既有发布证书及 R8 压缩；开发包仍使用 `.debug` 和既有开发证书。历史数据库迁移未修改，新增 37→38；沿用同一证书覆盖升级 UI2。V3 功能、安装步骤及未验收项见 [V3 测试版说明](docs/V3_RELEASE.md)，以下 UI2／RC 验证记录保留为历史依据。
 
 UI2 采用暖米白、森林绿、浅色卡片及三张原创本地奶油小猫插画，配套暖深绿主题。活动卡把类别原色放在图标底盘和色签中，周图保留类别原色。时间页使用柔和分段按钮，回顾按内容分组，详情保留直接可见的摘要、评分、照片与情境入口；设置六组采用图标底盘和说明，导航使用圆线图标与选中胶囊。没有改变用户保存的类别颜色、图标、排列设置或业务数据。界面实图与本轮验证见 [UI_REDESIGN.md](UI_REDESIGN.md)。
 
-M8 正在验收；公网 443 与真机后台兼容仍未通过，不标为正式首版完成。准确产物哈希、检查结果和限制记录在 [DEVELOPMENT.md](DEVELOPMENT.md)。使用与迁移见 [USER_GUIDE.md](USER_GUIDE.md)。
+V3 正在真机测试交付；公网 HTTPS 已复查连通，真机后台兼容与全部链路仍待验收，不标为最终稳定版。准确产物哈希、检查结果和限制记录在 [DEVELOPMENT.md](DEVELOPMENT.md)。使用与迁移见 [USER_GUIDE.md](USER_GUIDE.md)。
 
 RC2 补齐 Android 5–7（API 21–25）对服务器证书的信任：保留平台原有信任和主机名验证，额外使用官方 ISRG Root X1；Android 8 以上继续使用默认 HTTPS。根证书是公有证书，不含私钥；来源为 [官方 PEM](https://letsencrypt.org/certs/isrgrootx1.pem)，DER SHA-256 为 `96bcec06264976f37460779acf28c5a7cfe8a3c0aae11a8ffcee05c0bddf08c6`。该兼容选择依据 [官方说明](https://letsencrypt.org/docs/certificate-compatibility/)，在 API21／API35 验证生产链连接成功、错误 IP 与不受信链拒绝。诊断经受限 SSH 字节转发进行，不代表公网入口已通；不安装或信任本机 Avast 替换证书。
 
@@ -31,7 +31,7 @@ RC1／RC2／UI1／UI2 共用签名证书 SHA-256：`d7af0e293bf86fc1fc898e3f223f
 ```powershell
 .\scripts\sign-release.ps1 `
   -UnsignedApk '.\app\build\outputs\apk\base\release\app-base-release-unsigned.apk' `
-  -OutputApk 'D:\release\life-time-clock-ui1.apk' `
+  -OutputApk 'D:\release\life-time-clock-v3.apk' `
   -KeyStore 'D:\private\life-clock-release.p12' `
   -PasswordFile 'D:\private\signing-password.txt'
 ```
