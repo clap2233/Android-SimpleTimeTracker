@@ -62,6 +62,7 @@ class LifeClockFullBackupTest {
     @Inject lateinit var records: RecordRepo
     @Inject lateinit var gate: DataRestoreGate
     @Inject lateinit var mutations: RecordMutationRepo
+    @Inject lateinit var activityDefaults: com.example.util.simpletimetracker.domain.rhythm.ActivityDefaultsInstaller
     @Inject lateinit var planning: com.example.util.simpletimetracker.domain.planning.PlanningRepo
     private val context: Context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private val created = mutableListOf<File>()
@@ -142,7 +143,8 @@ class LifeClockFullBackupTest {
         val meta = identity.getOrCreate()
         val row = requireNotNull(database.recordDao().get(10)).record
         database.recordDao().insert(row.copy(timeEnded = start + 760_000, recovery = "MORE_TIRED"))
-        database.recordToRecordTagDao().insert(listOf(RecordToRecordTagDBO(10, meta.meaningTagId, -3.0, start + 1)))
+        database.recordToRecordTagDao().insert(listOf(RecordToRecordTagDBO(10, meta.meaningTagId, -3.0, start + 1), RecordToRecordTagDBO(10, meta.happinessTagId, -4.0, start + 1)))
+        activityDefaults.ensure()
         val plan = com.example.util.simpletimetracker.domain.planning.PlanSchedule(title = "reading", firstDate = "2026-10-12",
             startMinute = 540, durationMinutes = 30, repeat = com.example.util.simpletimetracker.domain.planning.PlanRepeat.DAILY)
         planning.save(plan)
@@ -154,7 +156,7 @@ class LifeClockFullBackupTest {
         val archive = temp("zip")
         backup.export(Uri.fromFile(archive).toString())
         val original = manifest(archive)
-        assertEquals(2, original.get("schemaVersion").asInt)
+        assertEquals(3, original.get("schemaVersion").asInt)
         planning.clear()
         database.recordDao().insert(row.copy(summary = "changed"))
         val preview = backup.prepareRestore(Uri.fromFile(archive).toString())
@@ -163,6 +165,7 @@ class LifeClockFullBackupTest {
         assertEquals(760_000L, restored.timeEnded - restored.timeStarted)
         assertEquals(com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_TIRED, restored.recovery)
         assertEquals(-3.0, restored.tags.single { it.tagId == meta.meaningTagId }.numericValue)
+        assertEquals(-4.0, restored.tags.single { it.tagId == meta.happinessTagId }.numericValue)
         assertEquals("2026-11-01", planning.exceptions().single().movedDate)
         assertEquals("${plan.id}@2026-10-13", planning.links().single().occurrenceId)
         val photo = database.recordPhotoDao().getAll().single()
@@ -170,7 +173,7 @@ class LifeClockFullBackupTest {
         val second = temp("zip")
         backup.export(Uri.fromFile(second).toString())
         val after = manifest(second)
-        listOf("records", "photos", "planSchedules", "planExceptions", "planRecordLinks").forEach {
+        listOf("records", "photos", "recordTypes", "activityDefaultsVersion", "planSchedules", "planExceptions", "planRecordLinks").forEach {
             assertEquals(it, original.get(it), after.get(it))
         }
         if (InstrumentationRegistry.getArguments().getString("transferFixture") == "export") {

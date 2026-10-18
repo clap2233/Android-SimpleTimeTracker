@@ -2,7 +2,6 @@ package com.example.util.simpletimetracker.domain.review.interactor
 
 import com.example.util.simpletimetracker.domain.record.model.Record
 import com.example.util.simpletimetracker.domain.record.model.RecordBase
-import com.example.util.simpletimetracker.domain.record.model.RecordReviewState
 import com.example.util.simpletimetracker.domain.record.model.RunningRecord
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -11,7 +10,7 @@ import java.util.TimeZone
 import javax.inject.Inject
 
 data class ReviewDay(val date: String, val start: Long, val end: Long)
-enum class ReviewTimeState { CONFIRMED, PENDING, RUNNING }
+enum class ReviewTimeState { CONFIRMED, RUNNING }
 data class ReviewTimeBlock(
     val id: Long,
     val typeId: Long,
@@ -20,7 +19,7 @@ data class ReviewTimeBlock(
     val state: ReviewTimeState,
     val day: Int,
 )
-data class ReviewScores(val distribution: List<Int>, val unrated: Int, val minimum: Int = 1) {
+data class ReviewScores(val distribution: List<Int>, val unrated: Int, val minimum: Int = -5) {
     val rated: Int get() = distribution.sum()
 }
 data class WeekReviewStats(
@@ -38,8 +37,10 @@ data class WeekReviewStats(
     val future: List<Record>,
     val happiness: ReviewScores,
     val meaning: ReviewScores,
+    val unfinishedFocus: List<Record> = emptyList(),
+    val unfinishedFocusMs: Long = 0,
 ) {
-    val unrecorded: Long get() = elapsed - recorded
+    val unrecorded: Long get() = elapsed - recorded - unfinishedFocusMs
 }
 
 class WeekReviewCalculator @Inject constructor() {
@@ -109,9 +110,11 @@ class WeekReviewCalculator @Inject constructor() {
         fun matches(tags: List<RecordBase.Tag>): Boolean =
             (people.isEmpty() || tags.any { it.tagId in people }) &&
                 (environments.isEmpty() || tags.any { it.tagId in environments })
-        val selected = weekRecords.filter {
+        val usable = weekRecords.filter {
             it.id !in repairs && it.timeStarted < cutoff && it.timeEnded > start && matches(it.tags)
         }.distinctBy { it.id }
+        val selected = usable.filterNot { it.isUnfinishedFocus }
+        val unfinished = usable.filter { it.isUnfinishedFocus }.sortedByDescending { it.timeStarted }
         val blocks = mutableListOf<ReviewTimeBlock>()
         fun add(id: Long, typeId: Long, from: Long, to: Long, state: ReviewTimeState) {
             days.forEachIndexed { day, range ->
@@ -123,29 +126,29 @@ class WeekReviewCalculator @Inject constructor() {
         selected.forEach {
             add(
                 it.id, it.typeId, it.timeStarted, it.timeEnded,
-                if (it.reviewState == RecordReviewState.CONFIRMED) ReviewTimeState.CONFIRMED else ReviewTimeState.PENDING,
+                ReviewTimeState.CONFIRMED,
             )
         }
         active.filter { it.id !in badRunning && matches(it.tags) }.forEach {
             add(it.id, it.id, it.timeStarted, cutoff, ReviewTimeState.RUNNING)
         }
-        val confirmedRecords = selected.filter { it.reviewState == RecordReviewState.CONFIRMED }
         fun scores(id: Long, minimum: Int): ReviewScores {
-            val values = confirmedRecords.map { rating(it, id, minimum) }
+            val values = selected.map { rating(it, id, minimum) }
             return ReviewScores((minimum..5).map { score -> values.count { it == score } }, values.count { it == null }, minimum)
         }
         fun duration(state: ReviewTimeState) = blocks.filter { it.state == state }.sumOf { it.end - it.start }
         fun grouped(data: List<ReviewTimeBlock>) = data.groupBy { it.typeId }.mapValues { (_, values) -> values.sumOf { it.end - it.start } }
         return WeekReviewStats(
             days, cutoff - start, blocks.sumOf { it.end - it.start },
-            duration(ReviewTimeState.CONFIRMED), duration(ReviewTimeState.PENDING), duration(ReviewTimeState.RUNNING),
+            duration(ReviewTimeState.CONFIRMED), 0L, duration(ReviewTimeState.RUNNING),
             grouped(blocks), grouped(blocks.filter { it.state == ReviewTimeState.CONFIRMED }),
             blocks, selected.sortedByDescending { it.timeStarted }, weekRecords.filter { it.id in repairs }, future,
-            scores(happinessId, 1), scores(meaningId, -5),
+            scores(happinessId, -5), scores(meaningId, -5),
+            unfinished, unfinished.sumOf { minOf(it.timeEnded, cutoff) - maxOf(it.timeStarted, start) },
         )
     }
 
-    fun rating(record: Record, id: Long, minimum: Int = 1): Int? = record.tags.firstOrNull { it.tagId == id }?.numericValue
+    fun rating(record: Record, id: Long, minimum: Int = -5): Int? = record.tags.firstOrNull { it.tagId == id }?.numericValue
         ?.takeIf { it.isFinite() && it in minimum.toDouble()..5.0 && it % 1.0 == 0.0 }?.toInt()
 
     fun comparisonRecords(records: List<Record>, now: Long): List<Record> {
@@ -159,7 +162,7 @@ class WeekReviewCalculator @Inject constructor() {
             if (furthest == null || record.timeEnded > requireNotNull(furthest).timeEnded) furthest = record
         }
         return records.filter {
-            it.id !in overlaps && it.duration > 0 && it.timeEnded <= now
+            !it.isUnfinishedFocus && it.id !in overlaps && it.duration > 0 && it.timeEnded <= now
         }
     }
 

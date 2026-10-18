@@ -31,7 +31,7 @@ internal object SnapshotTextExport {
         fun score(row: JsonObject, name: String, field: String): String = SnapshotJson.objects(SnapshotJson.array(row, "tags"))
             .firstOrNull { SnapshotJson.text(it, "tagId") == SnapshotJson.text(ratings, name) }?.get(field)?.takeUnless(JsonElement::isJsonNull)?.asString.orEmpty()
         return buildString {
-            append("dataSetId,recordId,typeId,activity,timeStarted,timeEnded,durationMs,zoneId,state,summary,comment,people,environment,tags,happiness,meaning,happinessRatedAt,meaningRatedAt,photoCount,recovery,combined\r\n")
+            append("dataSetId,recordId,typeId,activity,timeStarted,timeEnded,durationMs,zoneId,state,summary,comment,people,environment,tags,happiness,meaning,happinessRatedAt,meaningRatedAt,photoCount,recovery,combined,isUnfinishedFocus,unfinishedReason\r\n")
             records(root).sortedBy { SnapshotJson.number(it, "timeStarted") }.forEach { row ->
                 val id = SnapshotJson.text(row, "id")
                 val started = SnapshotJson.number(row, "timeStarted")
@@ -46,11 +46,12 @@ internal object SnapshotTextExport {
                 val values = listOf(
                     SnapshotJson.text(root, "dataSetId"), id, SnapshotJson.text(row, "typeId"), types[SnapshotJson.text(row, "typeId")]?.let { SnapshotJson.text(it, "name") }.orEmpty(),
                     started.toString(), ended.toString(), (ended - started).toString(), row.get("zoneId")?.takeUnless(JsonElement::isJsonNull)?.asString.orEmpty(),
-                    if (id in repair) "NEEDS_REPAIR" else SnapshotJson.text(row, "reviewState", "PENDING"), SnapshotJson.text(row, "summary", ""), SnapshotJson.text(row, "comment", ""),
+                    if (id in repair) "NEEDS_REPAIR" else state(row), SnapshotJson.text(row, "summary", ""), SnapshotJson.text(row, "comment", ""),
                     names("PERSON"), names("ENVIRONMENT"), names(null), score(row, "happinessTagId", "numericValue"), score(row, "meaningTagId", "numericValue"),
                     score(row, "happinessTagId", "ratedAt"), score(row, "meaningTagId", "ratedAt"), count.toString(),
                     row.get("recovery")?.takeUnless(JsonElement::isJsonNull)?.asString.orEmpty(),
                     score(row, "happinessTagId", "numericValue").toDoubleOrNull()?.let { h -> score(row, "meaningTagId", "numericValue").toDoubleOrNull()?.let { m -> (h + m).toInt().toString() } }.orEmpty(),
+                    SnapshotJson.bool(row, "isUnfinishedFocus").toString(), row.get("unfinishedReason")?.takeUnless(JsonElement::isJsonNull)?.asString.orEmpty(),
                 )
                 append(values.joinToString(",", transform = ::cell))
                 append("\r\n")
@@ -77,6 +78,7 @@ internal object SnapshotTextExport {
             }
             val activity = types[SnapshotJson.text(row, "typeId")]?.let { SnapshotJson.text(it, "name") }.orEmpty()
             val recordId = SnapshotJson.text(row, "id")
+            val unfinished = SnapshotJson.bool(row, "isUnfinishedFocus")
             val photoCount = photos.count { photo ->
                 if (recordId.startsWith("running:")) {
                     photo.get("runningRecordId")?.takeUnless(JsonElement::isJsonNull)?.asString == recordId.removePrefix("running:")
@@ -86,17 +88,27 @@ internal object SnapshotTextExport {
             }
             val description = (
                 listOf(SnapshotJson.text(row, "summary", ""), SnapshotJson.text(row, "comment", "")) + context +
-                    listOf("state=${SnapshotJson.text(row, "reviewState", "PENDING")}", "zoneId=${row.get("zoneId")?.takeUnless(JsonElement::isJsonNull)?.asString.orEmpty()}", "photos=$photoCount")
+                    listOf("state=${state(row)}", "zoneId=${row.get("zoneId")?.takeUnless(JsonElement::isJsonNull)?.asString.orEmpty()}", "photos=$photoCount") +
+                    listOfNotNull(row.get("unfinishedReason")?.takeUnless(JsonElement::isJsonNull)?.asString?.let { "unfinishedReason=$it" })
                 )
                 .filter(String::isNotEmpty).joinToString("\n")
             lines += listOf(
                 "BEGIN:VEVENT", "UID:${SnapshotJson.text(root, "dataSetId")}-${SnapshotJson.text(row, "id")}@life-clock",
                 "DTSTAMP:${format(SnapshotJson.number(root, "createdAt"))}", "DTSTART:${format(SnapshotJson.number(row, "timeStarted"))}", "DTEND:${format(SnapshotJson.number(row, "timeEnded"))}",
-                "SUMMARY:${escape(SnapshotJson.text(row, "summary", "").ifEmpty { activity })}", "DESCRIPTION:${escape(description)}", "END:VEVENT",
+                "SUMMARY:${escape((if (unfinished) "[未完成专注] " else "") + SnapshotJson.text(row, "summary", "").ifEmpty { activity })}",
+                "DESCRIPTION:${escape(description)}", "X-LIFE-CLOCK-STATE:${state(row)}",
             )
+            if (unfinished) lines += "TRANSP:TRANSPARENT"
+            lines += "END:VEVENT"
         }
         lines += "END:VCALENDAR"
         return lines.joinToString("\r\n", postfix = "\r\n", transform = ::fold)
+    }
+
+    private fun state(row: JsonObject): String = when {
+        SnapshotJson.text(row, "id").startsWith("running:") -> "RUNNING"
+        SnapshotJson.bool(row, "isUnfinishedFocus") -> "UNFINISHED_FOCUS"
+        else -> "RECORDED"
     }
 
     private fun fold(line: String): String = buildString {

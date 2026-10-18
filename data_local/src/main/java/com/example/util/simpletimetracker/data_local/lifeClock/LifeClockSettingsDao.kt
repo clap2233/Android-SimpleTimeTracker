@@ -12,6 +12,9 @@ interface LifeClockSettingsDao {
     @Insert
     suspend fun insert(settings: LifeClockSettingsDBO)
 
+    @Query("UPDATE lifeClockSettings SET activity_defaults_version = :version WHERE id = 1")
+    suspend fun setActivityDefaultsVersion(version: Int)
+
     @Query("DELETE FROM lifeClockSettings")
     suspend fun clear()
 }

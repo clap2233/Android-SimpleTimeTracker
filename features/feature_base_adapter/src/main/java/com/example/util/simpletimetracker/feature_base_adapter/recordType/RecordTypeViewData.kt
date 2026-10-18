@@ -18,6 +18,7 @@ data class RecordTypeViewData(
     val checkState: CheckState = CheckState.HIDDEN,
     val itemIsFiltered: Boolean = false,
     val isComplete: Boolean = false,
+    val policyLabel: String = "",
 ) : ViewHolderType {
 
     override fun getUniqueId(): Long = id

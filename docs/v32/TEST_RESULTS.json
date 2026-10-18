@@ -1,0 +1,25 @@
+{
+  "domain": {
+    "tests": 179,
+    "failures": 0,
+    "errors": 0
+  },
+  "data": {
+    "tests": 34,
+    "failures": 0,
+    "errors": 0
+  },
+  "date": "2026-10-17",
+  "cloudTests": 22,
+  "realAndroid15Alarms": 2,
+  "android5Passed": 21,
+  "android5ConditionalSkipped": 2,
+  "android15Passed": 29,
+  "android15ConditionalSkipped": 2,
+  "notes": "Core behavior tests preceded final typography-only changes. Failed initial English UI synchronization case passed after adding a view wait. Final typography was rechecked separately.",
+  "finalTypographyDate": "2026-10-18",
+  "smallScreenDp": 320,
+  "fontScale": 1.5,
+  "longestPresetNameFullyVisible": true,
+  "finalReleaseSha256": "e2cb7630ac9cd4b24d7ac77cd961864b6cedc4109a6e4fda6fd36395101982ab"
+}

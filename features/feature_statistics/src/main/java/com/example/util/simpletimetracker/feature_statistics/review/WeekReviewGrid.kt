@@ -135,15 +135,14 @@ class WeekReviewGrid(context: Context) : View(context) {
                 val y = top + a / 60 * hour
                 val rect = RectF(x, y, x + laneWidth - 2 * density, maxOf(y + density, top + b / 60 * hour))
                 paint.color = colors[block.typeId] ?: 0xffb0b0b0.toInt()
-                paint.alpha = if (block.state == ReviewTimeState.PENDING) 130 else 255
+                paint.alpha = 255
                 paint.style = Paint.Style.FILL
                 canvas.drawRoundRect(rect, 2 * density, 2 * density, paint)
-                if (block.state != ReviewTimeState.CONFIRMED) {
+                if (block.state == ReviewTimeState.RUNNING) {
                     paint.color = textColor
                     paint.alpha = 255
                     paint.style = Paint.Style.STROKE
                     paint.strokeWidth = density
-                    paint.pathEffect = if (block.state == ReviewTimeState.PENDING) android.graphics.DashPathEffect(floatArrayOf(3 * density, 2 * density), 0f) else null
                     canvas.drawRoundRect(rect, 2 * density, 2 * density, paint)
                     paint.pathEffect = null
                 }

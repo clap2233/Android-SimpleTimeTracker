@@ -45,6 +45,7 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingHorizontal="16dp"
+        android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/dividerChangeRecordPreview">
 
         <TextView
@@ -55,12 +56,6 @@
             android:textColor="?appTextPrimaryColor"
             android:textSize="14sp" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/lifeClockOrganizeButton"
-            style="@style/LifeClockUi2Button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/life_clock_organize" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

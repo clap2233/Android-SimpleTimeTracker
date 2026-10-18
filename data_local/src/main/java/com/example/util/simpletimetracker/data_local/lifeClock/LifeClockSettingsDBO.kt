@@ -17,4 +17,6 @@ data class LifeClockSettingsDBO(
     val meaningTagId: Long,
     @ColumnInfo(name = "restore_operation_id", defaultValue = "NULL")
     val restoreOperationId: String? = null,
+    @ColumnInfo(name = "activity_defaults_version", defaultValue = "0")
+    val activityDefaultsVersion: Int = 0,
 )

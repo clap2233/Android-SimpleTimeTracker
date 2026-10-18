@@ -1,0 +1,11 @@
+{
+  "upgrade": "V3 160 -> V3.2 164",
+  "database": "38 -> 39",
+  "schema": "2 -> 3",
+  "recordsPreserved": 2,
+  "photosPreserved": 2,
+  "oldTypeIdsPreserved": 2,
+  "defaultActivitiesAdded": 24,
+  "settingsPreserved": true,
+  "photoHashesVerified": true
+}

@@ -44,4 +44,10 @@ data class RecordDBO(
 
     @ColumnInfo(name = "recovery")
     val recovery: String? = null,
+
+    @ColumnInfo(name = "is_unfinished_focus", defaultValue = "0")
+    val isUnfinishedFocus: Boolean = false,
+
+    @ColumnInfo(name = "unfinished_reason")
+    val unfinishedReason: String? = null,
 )

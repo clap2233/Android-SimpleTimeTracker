@@ -98,16 +98,18 @@ class NotificationReceiver : BroadcastReceiver() {
         if (context == null || intent == null || action == null) return
 
         when (action) {
-            "app.lifetimeclock.MUTE_REMINDER" -> activityController.onMute(intent.getStringExtra("timerSessionId").orEmpty())
+            "app.lifetimeclock.MUTE_REMINDER" -> goAsync(finally = {}, block = {
+                activityController.onMute(intent.getStringExtra("timerSessionId").orEmpty()).join()
+            })
             com.example.util.simpletimetracker.feature_notification.planning.PlanningReminderImpl.ACTION -> goAsync(finally = {}, block = {
                 planningReminder.show(intent.getStringExtra("occurrenceId").orEmpty(), intent.getLongExtra("start", 0))
             })
             ACTION_INACTIVITY_REMINDER -> {
                 inactivityController.onInactivityReminder()
             }
-            ACTION_ACTIVITY_REMINDER -> {
-                activityController.onActivityReminder(intent.getStringExtra("timerSessionId"), intent.getLongExtra("scheduledAt", 0))
-            }
+            ACTION_ACTIVITY_REMINDER -> goAsync(finally = {}, block = {
+                activityController.onActivityReminder(intent.getStringExtra("timerSessionId"), intent.getLongExtra("scheduledAt", 0)).join()
+            })
             ACTION_POMODORO_REMINDER -> {
                 val cycleType = intent.getLongExtra(EXTRA_POMODORO_CYCLE_TYPE, 0)
                 pomodoroController.onReminder(cycleType)

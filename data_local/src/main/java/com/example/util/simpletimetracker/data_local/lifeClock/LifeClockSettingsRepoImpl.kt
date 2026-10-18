@@ -27,7 +27,7 @@ class LifeClockSettingsRepoImpl @Inject constructor(
             check(settings.happinessTagId != settings.meaningTagId)
             check(database.recordTagDao().get(settings.happinessTagId) != null) { "Happiness tag is missing." }
             check(database.recordTagDao().get(settings.meaningTagId) != null) { "Meaning tag is missing." }
-            LifeClockSettings(settings.dataSetId, settings.happinessTagId, settings.meaningTagId)
+            LifeClockSettings(settings.dataSetId, settings.happinessTagId, settings.meaningTagId, settings.activityDefaultsVersion)
         }
     }
 

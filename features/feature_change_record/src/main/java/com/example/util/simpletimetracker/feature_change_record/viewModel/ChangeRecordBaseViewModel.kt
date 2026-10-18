@@ -124,7 +124,7 @@ abstract class ChangeRecordBaseViewModel(
     suspend fun detailTags() = recordTagInteractor.getAll().filter { it.id !in detailDraft.identity?.ratingTagIds.orEmpty() }
 
     fun setDetailScore(id: Long, value: Int?) {
-        require(value == null || value in (if (id == detailDraft.identity?.meaningTagId) -5 else 1)..5)
+        require(value == null || value in -5..5)
         val old = newTags.firstOrNull { it.tagId == id }
         val timestamp = if (value == null) null else if (old?.numericValue == value.toDouble() && old.ratedAt != null) old.ratedAt else System.currentTimeMillis()
         newTags = newTags.filterNot { it.tagId == id } + RecordBase.Tag(id, value?.toDouble(), timestamp)

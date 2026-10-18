@@ -10,6 +10,7 @@ import com.example.util.simpletimetracker.core.extension.toPreview
 import com.example.util.simpletimetracker.core.extension.toParams
 import com.example.util.simpletimetracker.core.interactor.GetChangeRecordNavigationParamsInteractor
 import com.example.util.simpletimetracker.core.interactor.RecordRepeatInteractor
+import com.example.util.simpletimetracker.core.interactor.TimerReminderStatusInteractor
 import com.example.util.simpletimetracker.core.model.NavigationTab
 import com.example.util.simpletimetracker.core.repo.ResourceRepo
 import com.example.util.simpletimetracker.domain.activityFilter.interactor.ChangeSelectedActivityFilterMediator
@@ -40,6 +41,7 @@ import com.example.util.simpletimetracker.feature_dialogs.api.interactor.CardOrd
 import com.example.util.simpletimetracker.feature_running_records.R
 import com.example.util.simpletimetracker.feature_running_records.api.OnShortcutClickInteractor
 import com.example.util.simpletimetracker.feature_running_records.interactor.RunningRecordsViewDataInteractor
+import com.example.util.simpletimetracker.feature_running_records.view.NowGroupViewData
 import com.example.util.simpletimetracker.navigation.Router
 import com.example.util.simpletimetracker.navigation.params.screen.ChangeActivityFilterParams
 import com.example.util.simpletimetracker.navigation.params.screen.ChangeRecordFromMainParams
@@ -77,6 +79,7 @@ class RunningRecordsViewModel @Inject constructor(
     private val themeChangedInteractor: ThemeChangedInteractor,
     private val onShortcutClickInteractor: OnShortcutClickInteractor,
     private val cardOrderChangedInteractor: CardOrderChangedInteractor,
+    private val timerReminderStatusInteractor: TimerReminderStatusInteractor,
 ) : BaseViewModel() {
 
     override var delayDataLoad: Boolean = false
@@ -96,10 +99,26 @@ class RunningRecordsViewModel @Inject constructor(
     private var completeTypeIds: Set<Long> = emptySet()
     private var navBarHeightDp: Int = 0
     private var searchText: String = ""
+    private val groupExpansion = mutableMapOf<Long, Boolean>()
 
     init {
         subscribeToUpdates()
     }
+
+    fun onGroupToggle(item: NowGroupViewData) {
+        groupExpansion[item.id] = !item.expanded
+        updateRunningRecords()
+    }
+
+    fun onGroupStart(item: NowGroupViewData) {
+        item.activity?.let(::onRecordTypeStart)
+    }
+
+    fun onGroupEdit(item: NowGroupViewData, sharedElements: Pair<Any, String>) {
+        item.activity?.let { onRecordTypeEdit(it, sharedElements) }
+    }
+
+    fun onTimerStatusClick() = timerReminderStatusInteractor.openSettings()
 
     fun onRecordTypeClick(
         item: RecordTypeViewData,
@@ -569,6 +588,7 @@ class RunningRecordsViewModel @Inject constructor(
             navBarHeightDp = navBarHeightDp,
             searchText = searchText,
             fromSearchChange = fromSearchChange,
+            groupExpansion = groupExpansion.toMap(),
         )
     }
 

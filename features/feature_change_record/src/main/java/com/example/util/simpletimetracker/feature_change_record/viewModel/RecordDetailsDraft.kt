@@ -18,6 +18,7 @@ class RecordDetailsDraft @Inject constructor(
 ) {
     val recovery = MutableLiveData<com.example.util.simpletimetracker.domain.rhythm.Recovery?>(null)
     var running = false
+    var isUnfinishedFocus = false
     val summaryChanges = MutableLiveData("")
     var summary: String = ""
         set(value) {

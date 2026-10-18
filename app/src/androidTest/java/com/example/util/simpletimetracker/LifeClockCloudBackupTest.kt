@@ -162,7 +162,7 @@ class LifeClockCloudBackupTest {
         assertEquals(rating.dataSetId, manifest.getString("dataSetId"))
         assertEquals(id.toString(), manifest.getJSONArray("records").getJSONObject(0).getString("id"))
         assertEquals(result.createdAt, manifest.getLong("createdAt"))
-        assertEquals(27, manifest.getJSONObject("upstreamData").getJSONObject("tables").length())
+        assertEquals(31, manifest.getJSONObject("upstreamData").getJSONObject("tables").length())
         val bytes = read("${result.snapshotId}/photos/${manifest.getJSONArray("photos").getJSONObject(0).getString("sha256")}")
         val decoded = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
         assertEquals(4, decoded.width)

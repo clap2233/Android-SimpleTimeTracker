@@ -12,7 +12,7 @@ import android.text.InputType
 import android.widget.Toast
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.example.util.simpletimetracker.domain.record.model.Record
-import com.example.util.simpletimetracker.domain.record.model.RecordReviewState
+import com.example.util.simpletimetracker.domain.record.model.RecordMutationError
 import com.example.util.simpletimetracker.core.R
 import java.math.BigDecimal
 import java.text.SimpleDateFormat
@@ -113,9 +113,7 @@ class ChangeRecordFragment :
         core.initUx(this@ChangeRecordFragment, layoutChangeRecordCore)
         layoutChangeRecordCore.btnChangeRecordStatistics.setOnClick(viewModel::onStatisticsClick)
         layoutChangeRecordCore.btnChangeRecordDelete.setOnClick(viewModel::onDeleteClick)
-        layoutChangeRecordCore.btnChangeRecordSave.setOnClick { viewModel.saveAs(RecordReviewState.PENDING) }
-        lifeClockOrganizeButton.setOnClick { viewModel.saveAs(RecordReviewState.CONFIRMED) }
-        lifeClockOrganizeButton.text = "确认时间"
+        layoutChangeRecordCore.btnChangeRecordSave.setOnClick(viewModel::save)
         layoutChangeRecordCore.btnChangeRecordMore.setOnClickListener { showOrganizeMenu() }
     }
 
@@ -131,15 +129,16 @@ class ChangeRecordFragment :
                 )
             }
             core.initViewModel(this@ChangeRecordFragment, layoutChangeRecordCore)
-            reviewStatus.observe { state ->
-                val label = when (state) {
-                    1 -> R.string.life_clock_confirmed
-                    2 -> R.string.life_clock_needs_repair
-                    else -> R.string.life_clock_pending
+            timeError.observe { error ->
+                lifeClockOrganizeStrip.visibility = if (error == null) android.view.View.GONE else android.view.View.VISIBLE
+                val label = when (error) {
+                    RecordMutationError.EMPTY_INTERVAL -> R.string.life_clock_empty_interval
+                    RecordMutationError.FUTURE_TIME -> R.string.life_clock_future_time
+                    RecordMutationError.OVERLAP -> R.string.life_clock_overlap
+                    else -> R.string.life_clock_needs_repair
                 }
-                lifeClockRecordState.text = getString(R.string.life_clock_current_state, getString(label))
+                lifeClockRecordState.text = getString(label)
             }
-            saveButtonEnabled.observe(lifeClockOrganizeButton::setEnabled)
         }
         with(removeRecordViewModel) {
             prepare()
@@ -153,23 +152,21 @@ class ChangeRecordFragment :
     }
 
     private fun showOrganizeMenu() {
+        if (extra !is ChangeRecordParams.Tracked) return
         val actions = listOf(
-            R.string.life_clock_save_pending, R.string.life_clock_confirm, R.string.life_clock_merge_previous,
-            R.string.life_clock_split, R.string.life_clock_boundary_previous, R.string.life_clock_boundary_next,
-        ).take(if (extra is ChangeRecordParams.Tracked) 6 else 2).map(::getString) +
-            if (extra is ChangeRecordParams.Tracked) listOf("详细统计", "删除记录") else emptyList()
+            R.string.life_clock_merge_previous, R.string.life_clock_split,
+            R.string.life_clock_boundary_previous, R.string.life_clock_boundary_next,
+        ).map(::getString) + listOf("详细统计", "删除记录")
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.life_clock_organize)
+            .setTitle("更多操作")
             .setItems(actions.toTypedArray()) { _, index ->
                 when (index) {
-                    0 -> viewModel.saveAs(RecordReviewState.PENDING)
-                    1 -> viewModel.saveAs(RecordReviewState.CONFIRMED)
-                    2 -> prepareMerge()
-                    3 -> prepareSplit()
-                    4 -> prepareBoundary(previous = true)
-                    5 -> prepareBoundary(previous = false)
-                    6 -> viewModel.onStatisticsClick()
-                    7 -> if (binding.layoutChangeRecordCore.btnChangeRecordDelete.isEnabled) viewModel.onDeleteClick()
+                    0 -> prepareMerge()
+                    1 -> prepareSplit()
+                    2 -> prepareBoundary(previous = true)
+                    3 -> prepareBoundary(previous = false)
+                    4 -> viewModel.onStatisticsClick()
+                    5 -> if (binding.layoutChangeRecordCore.btnChangeRecordDelete.isEnabled) viewModel.onDeleteClick()
                 }
             }.show()
     }

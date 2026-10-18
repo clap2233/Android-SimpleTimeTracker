@@ -103,6 +103,12 @@ class RecordTypeView @JvmOverloads constructor(
             field = value
         }
 
+    var itemPolicyLabel: String = ""
+        set(value) {
+            field = value
+            changeConstraints(itemIsRow)
+        }
+
     var itemColor: Int = 0
         set(value) {
             field = value
@@ -172,6 +178,9 @@ class RecordTypeView @JvmOverloads constructor(
             if (softAppearance) context.getThemedAttr(R.attr.appTextPrimaryColor) else itemIconColor,
         )
         container.tvRecordTypeItemName.setTypeface(null, if (softAppearance) Typeface.NORMAL else Typeface.BOLD)
+        container.tvRecordTypeItemPolicy.setTextColor(
+            if (softAppearance) context.getThemedAttr(R.attr.appTextHintColor) else itemIconColor,
+        )
         container.ivRecordTypeItemIcon.apply {
             background = if (softAppearance) {
                 GradientDrawable().apply {
@@ -209,6 +218,25 @@ class RecordTypeView @JvmOverloads constructor(
             tvRecordTypeItemName.gravity = Gravity.CENTER
             tvRecordTypeItemName.setMargins(top = 4, start = 0)
         }
+        val hasPolicy = itemPolicyLabel.isNotEmpty()
+        if (hasPolicy) {
+            ConstraintSet().apply {
+                clone(constraintRecordTypeItem)
+                if (isRow) {
+                    connect(tvRecordTypeItemName.id, ConstraintSet.BOTTOM, tvRecordTypeItemPolicy.id, ConstraintSet.TOP)
+                    constrainWidth(ivRecordTypeItemIcon.id, 32.dpToPx())
+                    constrainHeight(ivRecordTypeItemIcon.id, 32.dpToPx())
+                } else {
+                    setGuidelinePercent(guideRecordTypeItem.id, 0.38f)
+                }
+            }.applyTo(constraintRecordTypeItem)
+        }
+        androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+            tvRecordTypeItemName, if (hasPolicy) 12 else 4, 14, 1, android.util.TypedValue.COMPLEX_UNIT_SP,
+        )
+        tvRecordTypeItemName.maxLines = if (hasPolicy) 3 else 2
+        tvRecordTypeItemPolicy.text = itemPolicyLabel
+        tvRecordTypeItemPolicy.isVisible = hasPolicy
     }
 
     private fun setCompleteVisibility() {

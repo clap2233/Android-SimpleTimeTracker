@@ -4,6 +4,7 @@ data class LifeClockSettings(
     val dataSetId: String,
     val happinessTagId: Long,
     val meaningTagId: Long,
+    val activityDefaultsVersion: Int = 0,
 ) {
     val ratingTagIds: Set<Long> get() = setOf(happinessTagId, meaningTagId)
 }

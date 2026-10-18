@@ -34,6 +34,8 @@ internal class SnapshotCodec {
                 result.addProperty("timeEnded", row.long("time_ended"))
                 require(row.long("review_state") in 0L..1L)
                 result.addProperty("reviewState", if (row.long("review_state") == 1L) "CONFIRMED" else "PENDING")
+                if (row.has("is_unfinished_focus") && row.boolean("is_unfinished_focus")) result.addProperty("isUnfinishedFocus", true)
+                row.get("unfinished_reason")?.takeUnless(JsonElement::isJsonNull)?.let { result.add("unfinishedReason", it.deepCopy()) }
             }
         }
         fun relation(table: String, leftColumn: String, leftName: String, rightColumn: String, rightName: String) = rows(table).map {
@@ -43,6 +45,8 @@ internal class SnapshotCodec {
             SnapshotJson.obj(
                 "id" to it.long("id").toString(), "name" to it.text("name"), "icon" to it.text("icon"),
                 "color" to color(it), "defaultDuration" to it.long("instantDuration"), "note" to it.text("note"), "hidden" to it.boolean("hidden"),
+                "parentTypeId" to it.optionalLong("parent_type_id")?.toString(),
+                "presetKey" to it.get("preset_key"),
             )
         }
         val tagDefinitions = rows("recordTags").map {
@@ -99,6 +103,12 @@ internal class SnapshotCodec {
                     values.deepCopy().also { copied ->
                         SnapshotJson.objects(copied).forEach { row ->
                             if (name == "lifeClockSettings") row.remove("restore_operation_id")
+                            if (name == "lifeClockSettings" && !row.has("activity_defaults_version")) row.addProperty("activity_defaults_version", "0")
+                            if (name == "recordTypes") listOf("parent_type_id", "preset_key").filterNot(row::has).forEach { row.add(it, com.google.gson.JsonNull.INSTANCE) }
+                            if (name == "records") {
+                                if (!row.has("is_unfinished_focus")) row.addProperty("is_unfinished_focus", "0")
+                                if (!row.has("unfinished_reason")) row.add("unfinished_reason", com.google.gson.JsonNull.INSTANCE)
+                            }
                             if (name == "recordPhotos") row.add("relative_path", requireNotNull(mediaById[row.long("id")]).get("relativePath").deepCopy())
                         }
                     },
@@ -106,7 +116,8 @@ internal class SnapshotCodec {
             }
         }
         return SnapshotJson.obj(
-            "schemaVersion" to 2, "dataSetId" to identity.text("data_set_id"), "snapshotId" to snapshotId, "createdAt" to createdAt,
+            "schemaVersion" to 4, "activityDefaultsVersion" to (identity.optionalLong("activity_defaults_version") ?: 0L),
+            "dataSetId" to identity.text("data_set_id"), "snapshotId" to snapshotId, "createdAt" to createdAt,
             "ratingTagIds" to SnapshotJson.obj("happinessTagId" to identity.long("happiness_tag_id").toString(), "meaningTagId" to identity.long("meaning_tag_id").toString()),
             "recordTypes" to recordTypes, "categories" to rows("categories").map { SnapshotJson.obj("id" to it.long("id").toString(), "name" to it.text("name"), "color" to color(it), "note" to it.text("note")) },
             "recordTypeCategories" to relation("recordTypeCategory", "record_type_id", "recordTypeId", "category_id", "categoryId"),
@@ -114,7 +125,7 @@ internal class SnapshotCodec {
             "defaultRecordTypeTags" to relation("recordTypeToDefaultTag", "record_type_id", "recordTypeId", "record_tag_id", "tagId"),
             "records" to rows("records").map { record(it, false) }, "runningRecords" to rows("runningRecords").map { record(it, true) },
             "photos" to normalizedPhotos, "templates" to templates, "settingShortcuts" to shortcuts, "weeklyReviews" to weekly, "trials" to trials,
-            "businessSettings" to settings, "upstreamData" to SnapshotJson.obj("databaseVersion" to 38, "tables" to raw),
+            "businessSettings" to settings, "upstreamData" to SnapshotJson.obj("databaseVersion" to 40, "tables" to raw),
         ).also { root -> SnapshotV3.decorate(root, tables); root.add("repairRecordIds", SnapshotJson.value(SnapshotValidation.repairIds(root).map(Long::toString))) }
     }
 

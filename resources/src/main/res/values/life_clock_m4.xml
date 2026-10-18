@@ -5,7 +5,7 @@
     <string name="life_clock_summary">Summary</string>
     <string name="life_clock_people">People</string>
     <string name="life_clock_environment">Environment</string>
-    <string name="life_clock_happiness">Happiness (1–5)</string>
+    <string name="life_clock_happiness">Happiness (−5–+5)</string>
     <string name="life_clock_meaning">Meaning (1–5)</string>
     <string name="life_clock_empty">Empty</string>
     <string name="life_clock_add">Add person or environment</string>

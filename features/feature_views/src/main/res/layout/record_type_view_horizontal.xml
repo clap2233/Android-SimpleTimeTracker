@@ -59,5 +59,18 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:text="Item very long name" />
 
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/tvRecordTypeItemPolicy"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="6dp"
+        android:gravity="start"
+        android:textSize="11sp"
+        android:visibility="gone"
+        app:layout_constraintStart_toEndOf="@id/ivRecordTypeItemIcon"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
 

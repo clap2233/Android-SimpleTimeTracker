@@ -14,6 +14,7 @@ const color = z.object({ colorId: z.number().int().min(-2147483648).max(21474836
 const tagValue = z.object({ tagId: entityId, numericValue: z.number().nullable(), ratedAt: time.nullable().optional() }).strict();
 const context = { comment: z.string().default(''), summary: z.string().default(''), zoneId: zone.nullable().optional(), templateId: entityId.nullable().optional() };
 const record = z.object({ id: entityId, typeId: zeroId, timeStarted: time, timeEnded: time,
+  isUnfinishedFocus: z.boolean().default(false), unfinishedReason: z.string().nullable().default(null),
   recovery: recoverySchema.nullable().optional(), tags: z.array(tagValue), reviewState: z.enum(['CONFIRMED', 'PENDING']).default('PENDING'), ...context }).strict();
 const running = z.object({ timerSession: timerSessionSchema.nullable().optional(), id: entityId, timeStarted: time, tags: z.array(tagValue), ...context }).strict();
 const ref = z.object({ recordId: entityId, caption: z.string().default('') }).strict();
@@ -25,8 +26,8 @@ export const photoSchema = z.object({ id: entityId, recordId: entityId.nullable(
   relativePath: z.string().regex(/^photos\/[a-zA-Z0-9_-]+\.(png|jpg|jpeg|webp|gif|bmp|heic|heif|avif)$/),
   sha256: z.string().regex(/^[a-f0-9]{64}$/), position: z.number().int().min(0).max(2147483647),
   mimeType: z.string().regex(/^image\/[a-z0-9.+-]+$/), sizeBytes: z.number().int().min(1).max(50 * 1024 * 1024) }).strict();
-export const snapshotSchema = z.object({ schemaVersion: z.union([z.literal(1), z.literal(2)]), ...planningFields, dataSetId: uuid, snapshotId: uuid, createdAt: time.min(0),
-  recordTypes: z.array(z.object({ timerPolicy: timerPolicySchema.nullable().optional(), id: entityId, name: z.string(), icon: z.string(), color, defaultDuration: time.min(0), note: z.string().default(''), hidden: z.boolean() }).strict()),
+export const snapshotSchema = z.object({ schemaVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]), activityDefaultsVersion: z.number().int().min(0).max(2147483647).default(0), ...planningFields, dataSetId: uuid, snapshotId: uuid, createdAt: time.min(0),
+  recordTypes: z.array(z.object({ parentTypeId: entityId.nullable().default(null), presetKey: z.string().refine(s => s.trim().length > 0).nullable().default(null), timerPolicy: timerPolicySchema.nullable().optional(), id: entityId, name: z.string(), icon: z.string(), color, defaultDuration: time.min(0), note: z.string().default(''), hidden: z.boolean() }).strict()),
   categories: z.array(z.object({ id: entityId, name: z.string(), color, note: z.string().default('') }).strict()).default([]),
   tags: z.array(z.object({ id: entityId, name: z.string(), icon: z.string().default(''), color, iconColorSource: zeroId,
     note: z.string().default(''), archived: z.boolean(), valueType: z.enum(['NONE', 'NUMERIC']), valueSuffix: z.string().default(''), purpose: z.enum(['GENERAL', 'PERSON', 'ENVIRONMENT']).default('GENERAL') }).strict()),
@@ -43,7 +44,7 @@ export const snapshotSchema = z.object({ schemaVersion: z.union([z.literal(1), z
   trials: z.array(z.object({ id: entityId, reviewId: entityId.nullable().optional(), source: ref.nullable().optional(),
     description: z.string().refine(v => v.trim().length > 0), relatedRecordIds: softIds }).strict()).default([]),
   businessSettings: z.record(z.string(), z.unknown()).default({}), repairRecordIds: softIds,
-  upstreamData: z.object({ databaseVersion: z.union([z.literal(36), z.literal(37), z.literal(38)]), tables: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))) }).strict().optional(),
+  upstreamData: z.object({ databaseVersion: z.union([z.literal(36), z.literal(37), z.literal(38), z.literal(39), z.literal(40)]), tables: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))) }).strict().optional(),
 }).strict();
 export type Snapshot = z.infer<typeof snapshotSchema>;
 export type Experience = Snapshot['records'][number];
@@ -95,6 +96,15 @@ export function validateSnapshot(input: unknown): Snapshot {
   function ids(rows: { id: string }[]) { check(unique(rows.map(r => r.id)), 'Duplicate ID'); return new Set(rows.map(r => r.id)); }
   const types = ids(s.recordTypes), tags = ids(s.tags), categories = ids(s.categories), records = ids(s.records), running = ids(s.runningRecords), reviews = ids(s.weeklyReviews);
   const templates = ids(s.templates), shortcuts = ids(s.settingShortcuts); ids(s.photos); ids(s.trials);
+  const typeMap = new Map(s.recordTypes.map(t => [t.id, t]));
+  const presetKeys = s.recordTypes.flatMap(t => t.presetKey === null ? [] : [t.presetKey]);
+  check(unique(presetKeys), 'Duplicate activity preset key');
+  for (const t of s.recordTypes) if (t.parentTypeId !== null) {
+    const parent = typeMap.get(t.parentTypeId);
+    check(parent && parent.id !== t.id && parent.parentTypeId === null, 'Invalid activity group');
+  }
+  if (s.schemaVersion < 3) check(s.activityDefaultsVersion === 0 && s.recordTypes.every(t => t.parentTypeId === null && t.presetKey === null), 'Activity groups require schema 3');
+  if (s.schemaVersion < 4) check(s.records.every(r => !r.isUnfinishedFocus && r.unfinishedReason === null), 'Unfinished focus requires schema 4');
   check([...templates].every(id => !shortcuts.has(id)), 'Conflicting shortcut ID');
   const rating = Object.values(s.ratingTagIds); check(unique(rating), 'Conflicting rating identities');
   check(rating.every(id => s.tags.some(t => t.id === id && t.valueType === 'NUMERIC')), 'Missing rating identity');
@@ -103,7 +113,7 @@ export function validateSnapshot(input: unknown): Snapshot {
     check(unique(r.tags.map(t => t.tagId)), 'Duplicate record tag');
     for (const t of r.tags) {
       check(tags.has(t.tagId), 'Missing tag');
-      if (rating.includes(t.tagId)) check(t.numericValue === null || Number.isInteger(t.numericValue) && t.numericValue >= (t.tagId === s.ratingTagIds.meaningTagId && s.schemaVersion >= 2 ? -5 : 1) && t.numericValue <= 5, 'Invalid rating');
+      if (rating.includes(t.tagId)) check(t.numericValue === null || Number.isInteger(t.numericValue) && t.numericValue >= (s.schemaVersion >= 3 || t.tagId === s.ratingTagIds.meaningTagId && s.schemaVersion >= 2 ? -5 : 1) && t.numericValue <= 5, 'Invalid rating');
     }
   }
   for (const r of s.records) check(r.typeId === '0' || types.has(r.typeId), 'Missing type');
@@ -159,9 +169,14 @@ function validateNative(s: Snapshot) {
     for (const row of rows) {
       check(Object.keys(row).every(c => Object.hasOwn(columns, c)), 'Unknown native column');
       for (const [c, spec] of Object.entries(columns)) {
+        const addedIn39 = name === 'recordTypes' && ['parent_type_id', 'preset_key'].includes(c) || name === 'lifeClockSettings' && c === 'activity_defaults_version';
+        const addedIn40 = name === 'records' && ['is_unfinished_focus', 'unfinished_reason'].includes(c);
+        if (!Object.hasOwn(row, c) && addedIn40 && s.upstreamData!.databaseVersion < 40) continue;
+        if (!Object.hasOwn(row, c) && addedIn39 && s.upstreamData!.databaseVersion < 39) continue;
         if (!Object.hasOwn(row, c) && !spec.required && s.upstreamData!.databaseVersion < 38) continue;
         check(Object.hasOwn(row, c), 'Missing native column');
         const v = row[c];
+        if (name === 'records' && c === 'is_unfinished_focus') check(v === '0' || v === '1', 'Invalid unfinished focus flag');
         check(v === null ? !spec.required : spec.type === 'INTEGER' ? typeof v === 'string' && /^-?\d+$/.test(v) && BigInt(v) >= -9223372036854775808n && BigInt(v) <= 9223372036854775807n :
           spec.type === 'REAL' ? typeof v === 'number' && Number.isFinite(v) : typeof v === 'string', 'Invalid native value');
       }
@@ -170,13 +185,14 @@ function validateNative(s: Snapshot) {
   const rows = (name: string) => tables[name] ?? [];
   const metadata = rows('lifeClockSettings');
   check(metadata.length === 1 && metadata[0].data_set_id === s.dataSetId && metadata[0].happiness_tag_id === s.ratingTagIds.happinessTagId && metadata[0].meaning_tag_id === s.ratingTagIds.meaningTagId, 'Conflicting native identity');
+  check(Number(metadata[0].activity_defaults_version ?? 0) === s.activityDefaultsVersion, 'Conflicting activity defaults version');
   const projection = (name: string, data: { id: string }[], map: (r: Record<string, unknown>) => Record<string, unknown>) => {
     const actual = rows(name).map(map); check(actual.length === data.length, 'Conflicting native collection');
     const indexed = new Map(actual.map(r => [r.id, r])); check(indexed.size === actual.length, 'Duplicate native ID');
     for (const item of data) { const value = indexed.get(item.id); check(value, 'Missing native row'); for (const [key, val] of Object.entries(value)) check(canonical(val) === canonical((item as Record<string, unknown>)[key]), `Conflicting native ${key}`); }
   };
   const nativeColor = (r: Record<string, unknown>) => ({ colorId: Number(r.color), colorInt: r.color_int });
-  projection('recordTypes', s.recordTypes, r => ({ id: r.id, name: r.name, icon: r.icon, color: nativeColor(r), note: r.note, hidden: r.hidden === '1', defaultDuration: Number(r.instantDuration), timerPolicy: r.timer_policy ? timerPolicySchema.parse(strictJson(r.timer_policy as string)) : null }));
+  projection('recordTypes', s.recordTypes, r => ({ id: r.id, name: r.name, icon: r.icon, color: nativeColor(r), note: r.note, hidden: r.hidden === '1', defaultDuration: Number(r.instantDuration), parentTypeId: r.parent_type_id ?? null, presetKey: r.preset_key ?? null, timerPolicy: r.timer_policy ? timerPolicySchema.parse(strictJson(r.timer_policy as string)) : null }));
   projection('categories', s.categories, r => ({ id: r.id, name: r.name, color: nativeColor(r), note: r.note }));
   projection('recordTags', s.tags, r => ({ id: r.id, name: r.name, icon: r.icon, color: nativeColor(r), note: r.note, iconColorSource: r.icon_color_source,
     archived: r.archived === '1', valueType: r.value_type === '1' ? 'NUMERIC' : 'NONE', valueSuffix: r.value_suffix ?? '', purpose: ['GENERAL','PERSON','ENVIRONMENT'][Number(r.purpose)] }));
@@ -185,7 +201,8 @@ function validateNative(s: Snapshot) {
     .map(v => ({ tagId: v.record_tag_id, numericValue: v.record_tag_numeric_value, ratedAt: template ? null : v.rated_at === null ? null : Number(v.rated_at) }));
   const context = (r: Record<string, unknown>, table: string, key: string, template = false) => ({ id: r.id, summary: r.summary, comment: r.comment,
     ...(template ? {} : { zoneId: r.zone_id, templateId: r.template_id }), tags: values(table, key, r.id, template) });
-  projection('records', s.records, r => ({ ...context(r, 'recordToRecordTag', 'record_id'), typeId: r.type_id, timeStarted: Number(r.time_started), timeEnded: Number(r.time_ended), reviewState: r.review_state === '1' ? 'CONFIRMED' : 'PENDING', recovery: r.recovery ?? null }));
+  projection('records', s.records, r => ({ ...context(r, 'recordToRecordTag', 'record_id'), typeId: r.type_id, timeStarted: Number(r.time_started), timeEnded: Number(r.time_ended), reviewState: r.review_state === '1' ? 'CONFIRMED' : 'PENDING', recovery: r.recovery ?? null,
+    isUnfinishedFocus: r.is_unfinished_focus === '1', unfinishedReason: r.unfinished_reason ?? null }));
   projection('runningRecords', s.runningRecords, r => ({ ...context(r, 'runningRecordToRecordTag', 'running_record_id'), timeStarted: Number(r.time_started), timerSession: r.timer_session ? timerSessionSchema.parse(strictJson(r.timer_session as string)) : null }));
   const nativeShortcuts = rows('recordShortcuts');
   check(nativeShortcuts.length === s.templates.length + s.settingShortcuts.length, 'Conflicting shortcuts');

@@ -27,7 +27,11 @@ fun createRecordTypeAdapterDelegate(
 
         layoutParams = layoutParams.also { params ->
             item.width.dpToPx().let { params.width = it }
-            item.height.dpToPx().let { params.height = it }
+            val minimumHeight = if (item.policyLabel.isEmpty()) 0 else {
+                val fontScale = resources.configuration.fontScale
+                ((if (item.asRow) 72 else if (fontScale > 1.3f) 176 else 152) * fontScale).toInt().dpToPx()
+            }
+            params.height = maxOf(item.height.dpToPx(), minimumHeight)
         }
 
         this.softAppearance = softAppearance
@@ -38,6 +42,7 @@ fun createRecordTypeAdapterDelegate(
         itemIconColor = item.iconColor
         itemIconAlpha = item.iconAlpha
         itemName = item.name
+        itemPolicyLabel = item.policyLabel
         itemCheckState = item.checkState
         itemCompleteIsAnimated = true
         itemIsComplete = item.isComplete

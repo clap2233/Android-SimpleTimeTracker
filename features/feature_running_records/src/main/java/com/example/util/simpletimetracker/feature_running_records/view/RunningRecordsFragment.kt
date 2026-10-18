@@ -73,6 +73,12 @@ class RunningRecordsFragment :
             createEmptySpaceAdapterDelegate(),
             createLoaderAdapterDelegate(),
             createNowEmptyAdapterDelegate(),
+            createNowGroupAdapterDelegate(
+                onToggle = viewModel::onGroupToggle,
+                onStart = viewModel::onGroupStart,
+                onEdit = viewModel::onGroupEdit,
+            ),
+            createNowTimerStatusAdapterDelegate(viewModel::onTimerStatusClick),
             createHintAdapterDelegate(),
             createHintBigAdapterDelegate(),
             createDividerAdapterDelegate(),

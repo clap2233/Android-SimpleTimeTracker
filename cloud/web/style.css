@@ -283,6 +283,12 @@ h3{
   border:0;
   background:#fffefa;
   border-left:3px solid #a7bfab}
+.unfinished-focus{
+  padding:28px 0;
+  border-top:1px solid var(--line)}
+.unfinished-focus .record-row{
+  white-space:pre-wrap;
+  border-left-color:#b7a58c}
 .notice{
   background:#f2eadd;
   padding:14px;

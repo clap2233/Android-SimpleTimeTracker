@@ -6,7 +6,7 @@
     <string name="life_clock_multiple_running">现有计时存在重叠，请先处理，再开始新活动。</string>
     <string name="life_clock_gap">只能合并相接的活动，请先明确空档的归属。</string>
     <string name="life_clock_tag_conflict">请选择保留哪组数值。</string>
-    <string name="life_clock_invalid_score">快乐为 1–5 整数，意义为 −5 至＋5 整数，均可留空。</string>
+    <string name="life_clock_invalid_score">快乐和意义均为 −5 至＋5 整数，也可留空。</string>
     <string name="life_clock_record_changed">记录已变化，请重新打开后操作。</string>
     <string name="life_clock_pending">待整理</string>
     <string name="life_clock_confirmed">已确认</string>
@@ -26,4 +26,5 @@
     <string name="life_clock_clear_value">留空</string>
     <string name="life_clock_current_state">当前状态：%1$s</string>
     <string name="life_clock_confirm_operation">本次会保存页面上的类别、备注和时间，请核对预览后再应用。</string>
+    <string name="life_clock_focus_result_conflict">未完成专注不能与正式经历合并。</string>
 </resources>

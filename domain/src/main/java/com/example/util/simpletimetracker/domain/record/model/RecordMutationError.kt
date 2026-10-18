@@ -10,6 +10,7 @@ enum class RecordMutationError {
     MULTIPLE_RUNNING,
     GAP,
     TAG_CONFLICT,
+    FOCUS_RESULT_CONFLICT,
     INVALID_SCORE,
     RESERVED_TAG,
     DATA_RESTORING,

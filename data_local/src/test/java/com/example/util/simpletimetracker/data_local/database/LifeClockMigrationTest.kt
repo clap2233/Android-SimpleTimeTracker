@@ -18,6 +18,22 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
 class LifeClockMigrationTest {
+    @Test fun unfinishedFocusMigrationPreservesOldShortExperiencesAsFormal() = withDatabase(39) { connection ->
+        connection.execute("INSERT INTO records (id, type_id, time_started, time_ended, comment, tag_id) VALUES (9, 2, 1000, 481000, 'old short record', 0)")
+        migrate(connection, 39, 40)
+        assertEquals(listOf(listOf(1000, 481000, "old short record", 0, null)), connection.rows("SELECT time_started, time_ended, comment, is_unfinished_focus, unfinished_reason FROM records WHERE id = 9"))
+        assertSchemaMatches(connection, 40)
+    }
+
+    @Test fun v32AddsGroupsWithoutChangingLegacyData() = withDatabase(38) { connection ->
+        connection.execute("INSERT INTO recordTypes (id, name, icon, color, color_int, hidden, instant, instantDuration, note) VALUES (7, 'learning', 'old', 0, '', 0, 0, 0, 'legacy')")
+        connection.execute("INSERT INTO lifeClockSettings (id, data_set_id, happiness_tag_id, meaning_tag_id) VALUES (1, 'dataset', 7, 8)")
+        migrate(connection, 38, 39)
+        assertEquals(listOf(listOf(7, "learning", "old", null, null)), connection.rows("SELECT id, name, icon, parent_type_id, preset_key FROM recordTypes"))
+        assertEquals(listOf(listOf(0)), connection.rows("SELECT activity_defaults_version FROM lifeClockSettings"))
+        assertSchemaMatches(connection, 39)
+    }
+
 
     @Test
     fun v3AddsNullableFieldsWithoutChangingExistingTimesOrReviewState() = withDatabase(37) { connection ->

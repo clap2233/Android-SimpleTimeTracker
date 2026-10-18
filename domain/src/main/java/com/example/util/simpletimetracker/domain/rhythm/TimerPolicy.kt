@@ -12,7 +12,7 @@ data class TimerPolicy(
 
     fun nextReminder(start: Long, now: Long, ordinaryInterval: Long): Long? {
         val interval = when (mode) {
-            Mode.ORDINARY -> ordinaryInterval
+            Mode.ORDINARY -> return null
             Mode.FOCUS_EXIT -> return null
             Mode.INTERVAL -> intervalMinutes * 60_000L
         }
@@ -24,6 +24,9 @@ data class TimerPolicy(
 
     fun needsExitConfirmation(start: Long, now: Long): Boolean =
         mode == Mode.FOCUS_EXIT && ((now - start).coerceAtLeast(0) / 60_000L).let { it == 0L || it % 15L != 0L }
+
+    fun isUnfinished(start: Long, end: Long): Boolean =
+        mode == Mode.FOCUS_EXIT && end >= start && end - start < 15 * 60_000L
 
     companion object {
         val entertainmentPresets = listOf(

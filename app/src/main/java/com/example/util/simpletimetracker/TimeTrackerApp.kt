@@ -17,10 +17,19 @@ class TimeTrackerApp : Application() {
     @javax.inject.Inject
     lateinit var timerExitPrompt: com.example.util.simpletimetracker.core.interactor.TimerExitPromptImpl
 
+    @javax.inject.Inject
+    lateinit var activityDefaults: com.example.util.simpletimetracker.domain.rhythm.ActivityDefaultsInstaller
+
+    @javax.inject.Inject
+    lateinit var timerReminderPrompt: com.example.util.simpletimetracker.core.interactor.TimerReminderPrompt
+
     override fun onCreate() {
         super.onCreate()
         initLog()
-        kotlinx.coroutines.runBlocking { fullBackupRepo.recoverInterruptedRestore() }
+        kotlinx.coroutines.runBlocking {
+            fullBackupRepo.recoverInterruptedRestore()
+            activityDefaults.ensure()
+        }
         initLibraries()
         initStrictMode()
     }

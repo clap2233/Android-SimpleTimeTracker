@@ -2,7 +2,6 @@ package com.example.util.simpletimetracker.feature_notification.activity.control
 
 import com.example.util.simpletimetracker.core.extension.allowDiskRead
 import com.example.util.simpletimetracker.domain.notifications.interactor.NotificationActivityInteractor
-import com.example.util.simpletimetracker.domain.prefs.interactor.PrefsInteractor
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -10,7 +9,6 @@ import javax.inject.Inject
 class NotificationActivityBroadcastController @Inject constructor(
     private val mutations: com.example.util.simpletimetracker.domain.record.repo.RecordMutationRepo,
     private val planningReminder: com.example.util.simpletimetracker.domain.planning.PlanningReminder,
-    private val prefsInteractor: PrefsInteractor,
     private val notificationActivityInteractor: NotificationActivityInteractor,
 ) {
 
@@ -30,8 +28,6 @@ class NotificationActivityBroadcastController @Inject constructor(
     }
 
     private suspend fun checkAndSchedule() {
-        if (prefsInteractor.getActivityReminderRecurrent()) {
-            notificationActivityInteractor.checkAndSchedule()
-        }
+        notificationActivityInteractor.checkAndSchedule()
     }
 }

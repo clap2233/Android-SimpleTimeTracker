@@ -12,6 +12,7 @@ interface RecordMutationRepo {
     suspend fun saveDetails(record: Record, photos: List<com.example.util.simpletimetracker.domain.record.model.RecordPhoto>): Long
     suspend fun editRunningDetails(originalId: Long, record: RunningRecord, photos: List<com.example.util.simpletimetracker.domain.record.model.RecordPhoto>)
     suspend fun save(records: List<Record>): List<Long>
+    suspend fun updateUnfinishedReason(id: Long, reason: String?): Boolean
     suspend fun start(record: RunningRecord, now: Long, expectedSessionId: String? = null, allowFocusExit: Boolean = false, plan: com.example.util.simpletimetracker.domain.planning.PlanOccurrence? = null): TimerMutation
     suspend fun muteReminder(sessionId: String)
     suspend fun stop(typeId: Long, now: Long, expectedSessionId: String? = null, allowFocusExit: Boolean = false): TimerMutation

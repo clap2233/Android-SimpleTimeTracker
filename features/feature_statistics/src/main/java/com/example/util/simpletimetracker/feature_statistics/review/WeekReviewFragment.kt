@@ -27,7 +27,6 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import com.example.util.simpletimetracker.domain.color.mapper.AppColorMapper
 import com.example.util.simpletimetracker.domain.record.model.Record
-import com.example.util.simpletimetracker.domain.record.model.RecordReviewState
 import com.example.util.simpletimetracker.domain.recordShortcut.model.RecordShortcut
 import com.example.util.simpletimetracker.domain.recordTag.model.RecordTagPurpose
 import com.example.util.simpletimetracker.domain.review.interactor.ReviewScores
@@ -158,13 +157,13 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setPadding(0, dp(4), 0, dp(12))
         }
-        line("已确认 ${duration(data.stats.confirmed)} · 待整理 ${duration(data.stats.pending)} · 进行中 ${duration(data.stats.running)}")
+        line("已结束 ${duration(data.stats.confirmed)} · 进行中 ${duration(data.stats.running)}")
         line("已经过 ${duration(data.stats.elapsed)} · ${if (model.people.isEmpty() && model.environments.isEmpty()) "未记录" else "未匹配筛选"} ${duration(data.stats.unrecorded)}").apply {
             setTextColor(context.getThemedAttr(R.attr.appTextHintColor))
         }
         button("时间图例与统计说明") {
             AlertDialog.Builder(requireContext()).setTitle("如何读这周的时间")
-                .setMessage("${data.review.zoneId} · 完整 24 小时\n\n实色：已确认；浅色虚线：待整理；实边框：进行中；淡底色：未来。\n\n已确认经历计入评分分布；跨夜经历评分只算一次，空评分不作零分。组合活动的时间只计算一次。")
+                .setMessage("${data.review.zoneId} · 完整 24 小时\n\n实色：正式已结束经历；实边框：进行中；淡底色：未来。\n\n未完成专注单列，不计入正式总时长和评分分布，也不视作未记录空白。跨夜经历评分只算一次，空评分不作零分。组合活动的时间只计算一次。")
                 .setPositiveButton("知道了", null).create().also(::show)
         }
         val grid = WeekReviewGrid(requireContext()).apply {
@@ -201,13 +200,15 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
         currentContainer().addView(grid)
         if (data.stats.days.any { it.end - it.start != 86_400_000L }) line("夏令时切换日按本地钟面显示，重复时段分列；时长按实际经过时间计算。")
         section("时间花在哪里")
-        line("按已确认时长统计 · ${duration(data.stats.confirmed)}")
+        line("按已结束时长统计 · ${duration(data.stats.confirmed)}")
         if (data.stats.byType.isEmpty()) emptyWeek()
-        data.stats.byType.toList().sortedByDescending { data.stats.confirmedByType[it.first] ?: 0 }.forEach { (id, _) ->
+        fun groupId(typeId: Long) = data.types.find { it.id == typeId }?.parentTypeId ?: typeId
+        val grouped = data.stats.byType.entries.groupBy { groupId(it.key) }
+        val groupedConfirmed = data.stats.confirmedByType.entries.groupBy { groupId(it.key) }.mapValues { it.value.sumOf { entry -> entry.value } }
+        grouped.keys.sortedByDescending { groupedConfirmed[it] ?: 0 }.forEach { id ->
             val type = data.types.find { it.id == id }
-            val pending = data.stats.blocks.filter { it.typeId == id && it.state == ReviewTimeState.PENDING }.sumOf { it.end - it.start }
-            val running = data.stats.blocks.filter { it.typeId == id && it.state == ReviewTimeState.RUNNING }.sumOf { it.end - it.start }
-            val confirmed = data.stats.confirmedByType[id] ?: 0
+            val running = data.stats.blocks.filter { groupId(it.typeId) == id && it.state == ReviewTimeState.RUNNING }.sumOf { it.end - it.start }
+            val confirmed = groupedConfirmed[id] ?: 0
             val total = data.stats.confirmed
             val color = type?.let { colors.mapToColorInt(it.color) } ?: requireContext().getThemedAttr(R.attr.appTextHintColor)
             val fraction = if (total > 0) confirmed.toFloat() / total else 0f
@@ -224,8 +225,7 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
             currentContainer().addView(row)
             currentContainer().addView(ReviewBarView(requireContext(), fraction, color, requireContext().getThemedAttr(R.attr.lifeClockSoftSurfaceColor)),
                 LinearLayout.LayoutParams(-1, dp(7)).apply { bottomMargin = dp(4) })
-            line("已确认 ${(fraction * 100).toInt()}%" +
-                (if (pending > 0) " · 待整理 ${duration(pending)}" else "") +
+            line("占比 ${(fraction * 100).toInt()}%" +
                 (if (running > 0) " · 进行中 ${duration(running)}" else "")).apply {
                 textSize = 12f
                 setTextColor(context.getThemedAttr(R.attr.appTextHintColor))
@@ -258,8 +258,9 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
             ui.reviewScroll.post { if (view != null && binding === ui) ui.reviewScroll.scrollTo(0, oldScroll) }
             return
         }
+        showUnfinishedFocus(data)
         section("体验分布")
-        line("仅统计本周已确认经历；跨夜经历只评分一次，未评分保持为空。")
+        line("统计本周正式已结束经历；跨夜经历只评分一次，未评分保持为空。")
         showScores("快乐", data.stats.happiness)
         showScores("意义", data.stats.meaning)
         showRecoveryAndPlans(data)
@@ -292,13 +293,11 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
             } else {
                 val actual = data.stats.records.filter { it.templateId == id }
                 val spent = data.stats.blocks.filter { it.state != ReviewTimeState.RUNNING && it.id in actual.map(Record::id) }.sumOf { it.end - it.start }
-                val confirmed = actual.filter { it.reviewState == RecordReviewState.CONFIRMED }.map { it.id }.toSet()
-                val confirmedTime = data.stats.blocks.filter { it.state == ReviewTimeState.CONFIRMED && it.id in confirmed }.sumOf { it.end - it.start }
                 val activeTime = data.stats.blocks.filter { block ->
                     block.state == ReviewTimeState.RUNNING &&
                         data.runningRecords.any { it.id == block.id && it.templateId == id }
                 }.sumOf { it.end - it.start }
-                line("${templateName(template, data)} · 已确认 ${confirmed.size} 次 ${duration(confirmedTime)}\n待整理 ${actual.size - confirmed.size} 次 ${duration(spent - confirmedTime)} · 进行中 ${duration(activeTime)}")
+                line("${templateName(template, data)} · 已经历 ${actual.size} 次 ${duration(spent)} · 进行中 ${duration(activeTime)}")
                 button("查看经历 · ${templateName(template, data)}") { chooseRecord(actual, data) { showRecord(it, data) } }
                 button("开始 · ${templateName(template, data)}") { model.startTemplate(id) }
             }
@@ -325,6 +324,32 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
         }
         button("新增轻量尝试", R.id.reviewTrial) { editText("想怎样试一次？", "") { model.addTrial(it, null) } }
         ui.reviewScroll.post { if (view != null && binding === ui) ui.reviewScroll.scrollTo(0, oldScroll) }
+    }
+
+    private fun showUnfinishedFocus(data: WeekReviewScreen) {
+        section("未完成专注", R.attr.lifeClockSoftSurfaceColor)
+        line("${data.stats.unfinishedFocus.size} 次 · 中断时长 ${duration(data.stats.unfinishedFocusMs)}").id = R.id.reviewUnfinishedSummary
+        line("单次未满 15 分钟，保留真实时间，不计入正式总时长和评分分布。未完成仅指本次专注未达到门槛。")
+        if (data.stats.unfinishedFocus.isEmpty()) line("这周没有匹配的未完成专注。")
+        val format = SimpleDateFormat("MM-dd HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone(data.review.zoneId) }
+        data.stats.unfinishedFocus.forEach { record ->
+            line("${data.types.find { it.id == record.typeId }?.name ?: "未分类"}${record.summary.takeIf(String::isNotBlank)?.let { " · $it" }.orEmpty()}\n${format.format(Date(record.timeStarted))} — ${format.format(Date(record.timeEnded))}\n${duration(record.duration)}")
+            button("未完成原因 · ${record.unfinishedReason ?: "未填写"}") { editUnfinishedReason(record) }
+            button("查看详情 · ${model.caption(record, data)}") { editRecord(record, data) }
+        }
+    }
+
+    private fun editUnfinishedReason(record: Record) {
+        val input = EditText(requireContext()).apply {
+            id = R.id.reviewUnfinishedReason
+            hint = "未完成原因（可选）"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            setText(record.unfinishedReason.orEmpty())
+        }
+        show(AlertDialog.Builder(requireContext()).setTitle("未完成原因（可选）").setView(input)
+            .setNegativeButton("取消", null)
+            .setNeutralButton("清除") { _, _ -> model.saveUnfinishedReason(record.id, "") }
+            .setPositiveButton("保存") { _, _ -> model.saveUnfinishedReason(record.id, input.text.toString()) }.create())
     }
 
     private fun showScores(name: String, scores: ReviewScores) {
@@ -504,7 +529,7 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
 
     private fun recordLabel(record: Record, data: WeekReviewScreen): String {
         val format = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone(data.review.zoneId) }
-        return "${model.caption(record, data)} · ${format.format(Date(record.timeStarted))}\n${duration(record.duration)} · ${if (record.reviewState == RecordReviewState.CONFIRMED) "已确认" else "待整理"} · ${scores(record, data)}"
+        return "${model.caption(record, data)} · ${format.format(Date(record.timeStarted))}\n${duration(record.duration)} · ${scores(record, data)}"
     }
 
     private fun scores(record: Record, data: WeekReviewScreen): String {
@@ -523,7 +548,7 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
     private fun showRecoveryAndPlans(data: WeekReviewScreen) {
         section("活动之后的恢复感")
         fun counts(records: List<Record>): String {
-            val values = records.filter { it.reviewState == RecordReviewState.CONFIRMED }
+            val values = records
             return "更有精神 ${values.count { it.recovery == com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_ENERGY }} · 差不多 ${values.count { it.recovery == com.example.util.simpletimetracker.domain.rhythm.Recovery.UNCHANGED }} · 更累 ${values.count { it.recovery == com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_TIRED }} · 未填写 ${values.count { it.recovery == null }}"
         }
         line(counts(data.stats.records))
@@ -539,10 +564,11 @@ class WeekReviewFragment : BaseFragment<WeekReviewFragmentBinding>() {
         if (data.plans.isEmpty()) line("这周还没有计划时段。可以到「规划」给重要的事留位置。")
         data.plans.forEach { plan ->
             val links = data.planLinks.filter { it.occurrenceId == plan.id && it.recordId != null }
-            val actual = com.example.util.simpletimetracker.domain.planning.PlanCalendar.occupiedMillis(links.map { it.timeStarted to requireNotNull(it.timeEnded) }, Long.MIN_VALUE, Long.MAX_VALUE)
+            val unfinishedIds = data.allRecords.filter { it.isUnfinishedFocus }.map { it.id }.toSet()
+            val actual = com.example.util.simpletimetracker.domain.planning.PlanCalendar.occupiedMillis(links.filter { it.recordId !in unfinishedIds }.map { it.timeStarted to requireNotNull(it.timeEnded) }, Long.MIN_VALUE, Long.MAX_VALUE)
             line("${plan.date} · ${plan.schedule.title} · ${if (plan.schedule.kind == com.example.util.simpletimetracker.domain.planning.PlanKind.BUFFER) "缓冲" else "计划"}\n预留 ${duration(plan.end - plan.start)} · 关联实际 ${duration(actual)}")
             links.mapNotNull { link -> data.allRecords.find { it.id == link.recordId } }.distinctBy { it.id }.forEach { record ->
-                button(recordLabel(record, data)) { showRecord(record, data) }
+                button((if (record.isUnfinishedFocus) "未完成专注 · " else "") + recordLabel(record, data)) { if (record.isUnfinishedFocus) editRecord(record, data) else showRecord(record, data) }
             }
         }
     }

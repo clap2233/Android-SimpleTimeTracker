@@ -3,8 +3,9 @@ package com.example.util.simpletimetracker.data_local.recordType
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.Index
 
-@Entity(tableName = "recordTypes")
+@Entity(tableName = "recordTypes", indices = [Index(value = ["preset_key"], unique = true)])
 data class RecordTypeDBO(
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = "id")
@@ -38,4 +39,8 @@ data class RecordTypeDBO(
     val note: String,
     @ColumnInfo(name = "timer_policy")
     val timerPolicy: String? = null,
+    @ColumnInfo(name = "parent_type_id")
+    val parentTypeId: Long? = null,
+    @ColumnInfo(name = "preset_key")
+    val presetKey: String? = null,
 )

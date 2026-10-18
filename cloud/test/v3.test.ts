@@ -92,6 +92,7 @@ test('AI credentials are text-only, read-only and snapshot-pinned', async () => 
     const first = (await app.inject({ url: `/api/ai/snapshots/${s.snapshotId}/records?limit=1`, headers: ai })).json();
     assert.equal(first.items.length, 1); assert.equal(first.nextOffset, 1); assert.equal(first.snapshotId, s.snapshotId);
     assert.equal(first.items[0].photos, undefined); assert.equal(first.upstreamData, undefined);
+    assert.equal(first.items[0].reviewState, undefined);
     const second = fresh(); second.createdAt += 1000;
     await app.inject({ method: 'POST', url: '/api/backups/prepare', headers: write, payload: { snapshotJson: JSON.stringify(second), parentSnapshotId: s.snapshotId } });
     await app.inject({ method: 'POST', url: `/api/backups/${second.snapshotId}/commit`, headers: write, payload: { parentSnapshotId: s.snapshotId } });

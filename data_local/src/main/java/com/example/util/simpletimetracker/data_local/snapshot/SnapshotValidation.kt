@@ -16,7 +16,10 @@ internal object SnapshotValidation {
     private const val MAX_SAFE_TIME = 9_007_199_254_740_991L
 
     fun validate(root: JsonObject): Set<Long> {
-        if (SnapshotJson.number(root, "schemaVersion") !in 1L..2L) throw FullBackupException(FullBackupFailure.UNSUPPORTED_VERSION)
+        val schemaVersion = SnapshotJson.number(root, "schemaVersion")
+        if (schemaVersion !in 1L..4L) throw FullBackupException(FullBackupFailure.UNSUPPORTED_VERSION)
+        val defaultsVersion = if (root.has("activityDefaultsVersion")) SnapshotJson.number(root, "activityDefaultsVersion") else 0L
+        require(defaultsVersion in 0..Int.MAX_VALUE.toLong())
         uuid(SnapshotJson.text(root, "dataSetId"))
         uuid(SnapshotJson.text(root, "snapshotId"))
         require(time(root, "createdAt") >= 0)
@@ -39,6 +42,8 @@ internal object SnapshotValidation {
         val reviews = ids("weeklyReviews")
         ids("trials")
         ids("photos")
+        val typeRows = rows("recordTypes").associateBy { SnapshotJson.id(it, "id") }
+        val presetKeys = mutableSetOf<String>()
         rows("recordTypes").forEach {
             SnapshotJson.text(it, "name")
             SnapshotJson.text(it, "icon")
@@ -46,7 +51,16 @@ internal object SnapshotValidation {
             color(it.getAsJsonObject("color"))
             SnapshotJson.bool(it, "hidden")
             require(SnapshotJson.number(it, "defaultDuration") >= 0)
+            val parent = SnapshotJson.nullableId(it, "parentTypeId")
+            if (parent != null) {
+                require(parent != SnapshotJson.id(it, "id") && parent in types)
+                require(SnapshotJson.nullableId(requireNotNull(typeRows[parent]), "parentTypeId") == null)
+            }
+            val key = nullableText(it, "presetKey")
+            if (key != null) require(key.isNotBlank() && presetKeys.add(key))
+            if (schemaVersion < 3) require(parent == null && key == null)
         }
+        if (schemaVersion < 3) require(defaultsVersion == 0L)
         rows("categories").forEach {
             SnapshotJson.text(it, "name")
             SnapshotJson.text(it, "note", "")
@@ -80,7 +94,7 @@ internal object SnapshotValidation {
                     require(value.isJsonPrimitive && value.asJsonPrimitive.isNumber)
                     val number = value.asDouble
                     require(number.isFinite())
-                    if (id in ratings) require(number in (if (id == meaning && SnapshotJson.number(root, "schemaVersion") >= 2) -5.0 else 1.0)..5.0 && number % 1.0 == 0.0)
+                    if (id in ratings) require(number in (if (schemaVersion >= 3 || id == meaning && schemaVersion >= 2) -5.0 else 1.0)..5.0 && number % 1.0 == 0.0)
                 }
                 it.get("ratedAt")?.takeUnless(JsonElement::isJsonNull)?.let { _ -> time(it, "ratedAt") }
             }
@@ -93,6 +107,9 @@ internal object SnapshotValidation {
             context(it)
             checkTags(it)
             require(SnapshotJson.text(it, "reviewState", "PENDING") in setOf("PENDING", "CONFIRMED"))
+            val unfinished = SnapshotJson.bool(it, "isUnfinishedFocus")
+            val unfinishedReason = nullableText(it, "unfinishedReason")
+            if (schemaVersion < 4) require(!unfinished && unfinishedReason == null)
         }
         rows("runningRecords").forEach {
             require(SnapshotJson.id(it, "id") in types)

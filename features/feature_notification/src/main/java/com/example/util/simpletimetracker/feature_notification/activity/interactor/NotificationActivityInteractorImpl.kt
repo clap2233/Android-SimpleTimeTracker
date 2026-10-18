@@ -24,19 +24,17 @@ class NotificationActivityInteractorImpl @Inject constructor(
     private val runningRecordInteractor: RunningRecordInteractor,
     private val getDoNotDisturbHandledScheduleInteractor: GetDoNotDisturbHandledScheduleInteractor,
     private val currentTimestampProvider: CurrentTimestampProvider,
+    private val foregroundPrompt: com.example.util.simpletimetracker.core.interactor.TimerReminderPrompt,
 ) : NotificationActivityInteractor {
     private suspend fun next(record: RunningRecord, now: Long): Long? {
         val session = record.timerSession
         if (session?.muted == true) return null
         val policy = session?.policy ?: TimerPolicy()
-        val seconds = prefsInteractor.getActivityReminderDuration()
-        val interval = if (seconds in 1..(Long.MAX_VALUE / 1000)) seconds * 1000 else 0
         val start = session?.startedAt ?: record.timeStarted
-        if (policy.mode == TimerPolicy.Mode.ORDINARY && !prefsInteractor.getActivityReminderRecurrent() && now - start >= interval) return null
-        val next = policy.nextReminder(start, now, interval) ?: return null
+        val next = policy.nextReminder(start, now, 0) ?: return null
         val allowed = getDoNotDisturbHandledScheduleInteractor.execute(next,
             prefsInteractor.getActivityReminderDoNotDisturbStart(), prefsInteractor.getActivityReminderDoNotDisturbEnd())
-        return policy.nextReminder(start, allowed - 1, interval)
+        return policy.nextReminder(start, allowed - 1, 0)
     }
 
     override suspend fun checkAndSchedule() {
@@ -60,6 +58,7 @@ class NotificationActivityInteractorImpl @Inject constructor(
                 prefsInteractor.getActivityReminderDoNotDisturbStart(), prefsInteractor.getActivityReminderDoNotDisturbEnd()) != now) return
         val name = recordTypeInteractor.getAll().firstOrNull { it.id == record.id }?.name.orEmpty()
         val periodic = record.timerSession?.policy?.mode == TimerPolicy.Mode.INTERVAL
+        foregroundPrompt.show("$name · 可以考虑收尾，计时仍在继续。")
         manager.show(NotificationActivityParams(
             title = if (periodic) "可以考虑收尾" else resourceRepo.getString(R.string.notification_activity_title),
             subtitle = if (periodic) "$name · 可以等本局或本章结束后再停止，计时仍在继续。" else resourceRepo.getString(R.string.notification_activity_text, name),

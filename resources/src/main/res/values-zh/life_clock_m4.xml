@@ -5,7 +5,7 @@
     <string name="life_clock_summary">摘要</string>
     <string name="life_clock_people">人物</string>
     <string name="life_clock_environment">环境</string>
-    <string name="life_clock_happiness">快乐（1–5）</string>
+    <string name="life_clock_happiness">快乐（−5～＋5）</string>
     <string name="life_clock_meaning">意义（1–5）</string>
     <string name="life_clock_empty">留空</string>
     <string name="life_clock_add">新增人物或环境</string>

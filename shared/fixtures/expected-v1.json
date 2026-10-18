@@ -4,25 +4,31 @@
   "elapsedMs": 122400000,
   "recordedUnionMs": 7060000,
   "unrecordedMs": 115340000,
-  "confirmedMs": 5400000,
-  "pendingMs": 760000,
+  "confirmedMs": 6160000,
+  "pendingMs": 0,
   "runningMs": 900000,
-  "confirmedEventCount": 4,
+  "confirmedEventCount": 5,
   "confirmedByType": {
     "0": 900000,
     "1": 1800000,
     "2": 1800000,
-    "4": 900000
+    "4": 1660000
   },
   "happiness": {
     "distribution": [
       0,
       0,
       0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
       2,
       0
     ],
-    "ratedCount": 2,
+    "ratedCount": 3,
     "unratedCount": 2
   },
   "meaning": {
@@ -37,14 +43,14 @@
       0,
       1,
       0,
-      1
+      2
     ],
-    "ratedCount": 2,
+    "ratedCount": 3,
     "unratedCount": 2
   },
   "dailyConfirmedMs": [
     900000,
-    4500000
+    5260000
   ],
   "combinedTagFilterIds": [
     "2"

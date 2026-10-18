@@ -20,6 +20,8 @@ class RecordDataLocalMapper @Inject constructor() {
             zoneId = dbo.record.zoneId,
             templateId = dbo.record.templateId,
             recovery = dbo.record.recovery?.let(com.example.util.simpletimetracker.domain.rhythm.Recovery::valueOf),
+            isUnfinishedFocus = dbo.record.isUnfinishedFocus,
+            unfinishedReason = dbo.record.unfinishedReason,
             reviewState = RecordReviewState.fromStorageValue(dbo.record.reviewState),
         )
     }
@@ -36,6 +38,8 @@ class RecordDataLocalMapper @Inject constructor() {
             zoneId = domain.zoneId,
             templateId = domain.templateId,
             recovery = domain.recovery?.name,
+            isUnfinishedFocus = domain.isUnfinishedFocus,
+            unfinishedReason = domain.unfinishedReason,
             reviewState = domain.reviewState.storageValue,
         )
     }

@@ -9,11 +9,13 @@ data class Record(
     override val timeEnded: Long,
     override val comment: String,
     override val tags: List<RecordBase.Tag>,
-    val reviewState: RecordReviewState = RecordReviewState.PENDING,
+    val reviewState: RecordReviewState = RecordReviewState.CONFIRMED,
     val summary: String = "",
     val zoneId: String? = TimeZone.getDefault().id,
     val templateId: Long? = null,
     val recovery: com.example.util.simpletimetracker.domain.rhythm.Recovery? = null,
+    val isUnfinishedFocus: Boolean = false,
+    val unfinishedReason: String? = null,
 ) : RecordBase {
 
     override val typeIds: List<Long> = listOf(typeId)

@@ -7,6 +7,21 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 class AppDatabaseMigrations {
 
     companion object {
+        private val migration_39_40 = object : Migration(39, 40) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE records ADD COLUMN is_unfinished_focus INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE records ADD COLUMN unfinished_reason TEXT")
+            }
+        }
+
+        private val migration_38_39 = object : Migration(38, 39) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE recordTypes ADD COLUMN parent_type_id INTEGER")
+                database.execSQL("ALTER TABLE recordTypes ADD COLUMN preset_key TEXT")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_recordTypes_preset_key ON recordTypes(preset_key)")
+                database.execSQL("ALTER TABLE lifeClockSettings ADD COLUMN activity_defaults_version INTEGER NOT NULL DEFAULT 0")
+            }
+        }
         private val migration_37_38 = object : Migration(37, 38) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE records ADD COLUMN recovery TEXT")
@@ -59,6 +74,8 @@ class AppDatabaseMigrations {
                 migration_35_36,
                 migration_36_37,
                 migration_37_38,
+                migration_38_39,
+                migration_39_40,
             )
 
         private val migration_36_37 = object : Migration(36, 37) {

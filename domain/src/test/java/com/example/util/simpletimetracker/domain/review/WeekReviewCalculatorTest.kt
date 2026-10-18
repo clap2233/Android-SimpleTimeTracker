@@ -14,6 +14,31 @@ class WeekReviewCalculatorTest {
     private val zone = "Asia/Shanghai"
     private val monday = 1_791_129_600_000L
 
+    @Test fun unfinishedFocusIsSeparateFromFormalTimeRatingsAndUnrecordedGaps() {
+        val attempt = record(1, monday, 480_000, tags = listOf(RecordBase.Tag(101, 5.0))).copy(isUnfinishedFocus = true, unfinishedReason = "phone call")
+        val formal = record(2, monday + 480_000, 1_320_000)
+        val data = stats(listOf(attempt, formal))
+        assertEquals(1_320_000L, data.recorded)
+        assertEquals(1_320_000L, data.confirmed)
+        assertEquals(480_000L, data.unfinishedFocusMs)
+        assertEquals(listOf(attempt), data.unfinishedFocus)
+        assertEquals(listOf(formal), data.records)
+        assertEquals(0, data.happiness.rated)
+        assertEquals(1, data.happiness.unrated)
+        assertEquals(data.elapsed - 1_800_000L, data.unrecorded)
+        assertEquals(listOf(formal), calculator.comparisonRecords(listOf(attempt, formal), monday + 86_400_000))
+    }
+
+    @Test fun unfinishedFocusClipsAtWeekBoundaryAndStillDetectsRealOverlaps() {
+        val attempt = record(1, monday - 120_000, 480_000).copy(isUnfinishedFocus = true)
+        assertEquals(360_000L, stats(listOf(attempt)).unfinishedFocusMs)
+        val overlapping = record(2, monday, 900_000)
+        val invalid = stats(listOf(attempt, overlapping))
+        assertEquals(0L, invalid.recorded)
+        assertTrue(invalid.unfinishedFocus.isEmpty())
+        assertEquals(setOf(1L, 2L), invalid.repairs.map { it.id }.toSet())
+    }
+
     @Test fun crossWeekTrialComparisonRejectsOverlapsAndFutureButKeepsExactPendingExperiences() {
         val data = calculator.comparisonRecords(
             listOf(
@@ -60,12 +85,12 @@ class WeekReviewCalculatorTest {
         assertEquals(122_400_000L, data.elapsed)
         assertEquals(7_060_000L, data.recorded)
         assertEquals(115_340_000L, data.unrecorded)
-        assertEquals(5_400_000L, data.confirmed)
-        assertEquals(760_000L, data.pending)
+        assertEquals(6_160_000L, data.confirmed)
+        assertEquals(0L, data.pending)
         assertEquals(900_000L, data.running)
         assertEquals(900_000L, data.byType[0])
         assertEquals(900_000L, data.blocks.filter { it.day == 0 }.sumOf { it.end - it.start })
-        assertEquals(4, data.happiness.unrated)
+        assertEquals(5, data.happiness.unrated)
     }
 
     @Test fun crossingMidnightAndMultiplePurposesNeverDuplicateExperienceOrScores() {
@@ -81,12 +106,12 @@ class WeekReviewCalculatorTest {
         assertEquals(1_800_000L, data.recorded)
         assertEquals(1, data.records.size)
         assertEquals(2, data.blocks.size)
-        assertEquals(listOf(0, 0, 0, 1, 0), data.happiness.distribution)
+        assertEquals(listOf(0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0), data.happiness.distribution)
         assertEquals(1, data.meaning.rated)
         assertEquals(0, data.meaning.unrated)
     }
 
-    @Test fun ratingsUseFixedIdentityAndIgnoreInvalidOrPendingValues() {
+    @Test fun ratingsUseFixedIdentityAndIgnoreInvalidValuesButIncludeLegacyPendingExperiences() {
         val data = stats(
             listOf(
                 record(1, monday, 900_000, tags = listOf(RecordBase.Tag(999, 5.0), RecordBase.Tag(101, 3.5))),
@@ -94,8 +119,45 @@ class WeekReviewCalculatorTest {
                 record(3, monday + 1_800_000, 300_000, false, tags = listOf(RecordBase.Tag(101, 5.0))),
             ),
         )
-        assertEquals(0, data.happiness.rated)
+        assertEquals(1, data.happiness.rated)
         assertEquals(2, data.happiness.unrated)
+    }
+
+    @Test fun legacyPendingExactDurationCountsWithNegativeRatingsAndRecovery() {
+        val record = record(
+            1, monday, 760_000, false,
+            tags = listOf(RecordBase.Tag(101, -5.0), RecordBase.Tag(102, -3.0)),
+        ).copy(recovery = com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_TIRED)
+        val data = stats(listOf(record))
+        assertEquals(760_000L, data.recorded)
+        assertEquals(760_000L, data.confirmedByType[record.typeId])
+        assertEquals(0L, data.pending)
+        assertEquals(1, data.happiness.distribution[0])
+        assertEquals(1, data.meaning.distribution[2])
+        assertEquals(com.example.util.simpletimetracker.domain.rhythm.Recovery.MORE_TIRED, data.records.single().recovery)
+        assertEquals(RecordReviewState.PENDING, data.records.single().reviewState)
+        assertTrue(data.repairs.isEmpty())
+    }
+
+    @Test fun bothRatingDistributionsKeepNegativeZeroAndMissingDistinct() {
+        val data = stats(listOf(
+            record(1, monday, 60_000, tags = listOf(RecordBase.Tag(101, -5.0), RecordBase.Tag(102, -5.0))),
+            record(2, monday + 60_000, 60_000, tags = listOf(RecordBase.Tag(101, 0.0), RecordBase.Tag(102, 0.0))),
+            record(3, monday + 120_000, 60_000, tags = listOf(RecordBase.Tag(101, null), RecordBase.Tag(102, null))),
+            record(4, monday + 180_000, 60_000, tags = listOf(RecordBase.Tag(101, 5.0), RecordBase.Tag(102, 5.0))),
+            record(5, monday + 240_000, 60_000, tags = listOf(RecordBase.Tag(101, -6.0), RecordBase.Tag(102, 6.0))),
+        ))
+        listOf(data.happiness, data.meaning).forEach { scores ->
+            assertEquals(-5, scores.minimum)
+            assertEquals(11, scores.distribution.size)
+            assertEquals(1, scores.distribution[0])
+            assertEquals(1, scores.distribution[5])
+            assertEquals(1, scores.distribution[10])
+            assertEquals(2, scores.unrated)
+        }
+        assertEquals(-5, calculator.rating(data.records.single { it.id == 1L }, 101))
+        assertEquals(0, calculator.rating(data.records.single { it.id == 2L }, 101))
+        org.junit.Assert.assertNull(calculator.rating(data.records.single { it.id == 3L }, 101))
     }
 
     @Test fun peopleAndEnvironmentFiltersUseAnyWithinEachGroupAndBothGroupsTogether() {

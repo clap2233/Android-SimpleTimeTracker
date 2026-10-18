@@ -19,11 +19,22 @@ class RecordInteractor @Inject constructor(
 ) {
 
     suspend fun isEmpty(): Boolean {
-        return recordRepo.isEmpty()
+        return getAll().isEmpty()
     }
 
     suspend fun getAll(): List<Record> {
-        return recordRepo.getAll()
+        return recordRepo.getAll().filterNot { it.isUnfinishedFocus }
+    }
+
+    suspend fun getAllIncludingUnfinished(): List<Record> = recordRepo.getAll()
+
+    suspend fun updateUnfinishedReason(id: Long, reason: String?): Boolean {
+        return try {
+            mutations.updateUnfinishedReason(id, reason?.trim()?.takeIf { it.isNotEmpty() })
+        } catch (error: RecordMutationException) {
+            feedback.show(error.reason)
+            false
+        }
     }
 
     suspend fun getWithParams(param: GetParam): List<Record> {
@@ -37,7 +48,7 @@ class RecordInteractor @Inject constructor(
             is GetParam.Untagged -> recordRepo.getUntagged()
             is GetParam.FromRange -> recordRepo.getFromRange(param.range)
             is GetParam.FromRangeByType -> recordRepo.getFromRangeByType(param.ids, param.range)
-        }
+        }.filterNot { it.isUnfinishedFocus }
     }
 
     suspend fun get(id: Long): Record? {
@@ -121,7 +132,7 @@ class RecordInteractor @Inject constructor(
     }
 
     suspend fun updateTimeEnded(recordId: Long, timeEnded: Long) {
-        get(recordId)?.copy(timeEnded = timeEnded, reviewState = com.example.util.simpletimetracker.domain.record.model.RecordReviewState.PENDING)
+        get(recordId)?.copy(timeEnded = timeEnded, reviewState = com.example.util.simpletimetracker.domain.record.model.RecordReviewState.CONFIRMED)
             ?.let { add(it) }
     }
 

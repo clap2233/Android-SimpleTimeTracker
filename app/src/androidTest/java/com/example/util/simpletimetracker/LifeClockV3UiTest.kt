@@ -104,8 +104,10 @@ class LifeClockV3UiTest : BaseUiTest() {
         onView(allOf(withId(baseR.id.runningStop), isDisplayed())).perform(click())
         clickOnViewWithText("现在结束")
         tryAction { assertTrue(runBlocking { running.getAll().isEmpty() }) }
-        val saved = runBlocking { records.getAll().single() }
+        assertTrue(runBlocking { records.getAll().isEmpty() })
+        val saved = runBlocking { records.getAllIncludingUnfinished().single() }
         assertTrue(saved.timeEnded - saved.timeStarted in 480_000..600_000)
+        assertTrue(saved.isUnfinishedFocus)
         assertEquals(com.example.util.simpletimetracker.domain.record.model.RecordReviewState.CONFIRMED, saved.reviewState)
     }
 
@@ -117,7 +119,7 @@ class LifeClockV3UiTest : BaseUiTest() {
         fun open() = tryAction { clickOnView(allOf(withId(baseR.id.viewRecordItem), isDisplayed(), hasDescendant(withSubstring(name)))) }
         open()
         onView(withId(detailsR.id.lifeClockHappinessButton)).perform(scrollTo(), click())
-        clickOnViewWithText("4")
+        onData(org.hamcrest.CoreMatchers.equalTo("4")).perform(click())
         onView(withId(detailsR.id.lifeClockMeaningButton)).perform(scrollTo(), click())
         clickOnViewWithText("-3")
         onView(withId(detailsR.id.lifeClockCombinedScore)).perform(scrollTo()).check(matches(withText("这条经历合计 · +1")))

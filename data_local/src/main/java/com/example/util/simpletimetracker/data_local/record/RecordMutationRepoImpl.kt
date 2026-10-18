@@ -59,6 +59,13 @@ class RecordMutationRepoImpl @Inject constructor(
         records.map { record -> write(record).also { PlanLinks.clip(database, it, record.timeStarted, record.timeEnded) } }
     }
 
+    override suspend fun updateUnfinishedReason(id: Long, reason: String?): Boolean = mutate {
+        val record = database.recordDao().get(id)?.let(recordMapper::map)
+            ?.takeIf { it.isUnfinishedFocus } ?: return@mutate false
+        write(record.copy(unfinishedReason = reason?.trim()?.takeIf { it.isNotEmpty() }))
+        true
+    }
+
     override suspend fun start(record: RunningRecord, now: Long, expectedSessionId: String?, allowFocusExit: Boolean, plan: PlanOccurrence?): TimerMutation = mutate {
         if (plan != null) {
             val schedules = database.planningDao().planSchedules().map { PlanningJson.schedule(it.contentJson) }
@@ -67,9 +74,11 @@ class RecordMutationRepoImpl @Inject constructor(
         }
         val identity = database.lifeClockSettingsDao().get()
         val ratingIds = identity?.let { setOf(it.happinessTagId, it.meaningTagId) }.orEmpty()
+        val type = database.recordTypeDao().get(record.id)
         val policy = record.templateId?.let { database.recordShortcutDao().get(it)?.shortcut?.timerPolicy }
             ?.let(com.example.util.simpletimetracker.data_local.planning.PlanningJson::policy)
-            ?: com.example.util.simpletimetracker.data_local.planning.PlanningJson.policy(database.recordTypeDao().get(record.id)?.timerPolicy)
+            ?: PlanningJson.policy(type?.timerPolicy)
+            ?: type?.parentTypeId?.let { PlanningJson.policy(database.recordTypeDao().get(it)?.timerPolicy) }
             ?: com.example.util.simpletimetracker.domain.rhythm.TimerPolicy()
         val started = record.copy(tags = record.tags.filterNot { it.tagId in ratingIds },
             timerSession = com.example.util.simpletimetracker.domain.rhythm.TimerSession(startedAt = now, policy = policy))
@@ -81,7 +90,7 @@ class RecordMutationRepoImpl @Inject constructor(
         }
         checkExit(current, now, expectedSessionId, allowFocusExit)
         validateRunning(started, now)
-        val ended = active.map { ended(it, record.timeStarted) }
+        val ended = active.map { ended(it, record.timeStarted, now) }
         validate(ended, emptySet(), active.map { it.id }.toSet(), now)
         ended.zip(active).forEach { (finished, previous) ->
             val id = write(finished)
@@ -145,6 +154,7 @@ class RecordMutationRepoImpl @Inject constructor(
         val previous = requireRecord(previousId)
         val original = requireRecord(record.id)
         if (previous.id == original.id || previous.timeStarted >= original.timeStarted) fail(RecordMutationError.GAP)
+        if (previous.isUnfinishedFocus != original.isUnfinishedFocus) fail(RecordMutationError.FOCUS_RESULT_CONFLICT)
         if (previous.timeEnded < original.timeStarted || previous.timeEnded < record.timeStarted) fail(RecordMutationError.GAP)
         if (!recoveryResolved && previous.recovery != null && record.recovery != null && previous.recovery != record.recovery) fail(RecordMutationError.TAG_CONFLICT)
         val chosen = tags ?: mergeTags(previous.tags, record.tags)
@@ -152,6 +162,7 @@ class RecordMutationRepoImpl @Inject constructor(
             timeStarted = previous.timeStarted,
             comment = listOf(previous.comment, record.comment).filter { it.isNotBlank() }.distinct().joinToString("\n"),
             summary = listOf(previous.summary, record.summary).filter { it.isNotBlank() }.distinct().joinToString("＋"),
+            unfinishedReason = listOfNotNull(previous.unfinishedReason, record.unfinishedReason).distinct().joinToString("\n").takeIf { it.isNotEmpty() },
             tags = chosen,
             recovery = if (recoveryResolved) record.recovery else record.recovery ?: previous.recovery,
             reviewState = validator.state(previous.timeStarted, record.timeEnded),
@@ -172,11 +183,13 @@ class RecordMutationRepoImpl @Inject constructor(
         val plain = record.tags.map { it.copy(numericValue = null, ratedAt = null) }
         val before = record.copy(
             id = 0, timeEnded = boundary, tags = if (attachmentsBefore) record.tags else plain,
+            unfinishedReason = if (attachmentsBefore) record.unfinishedReason else null,
             recovery = if (attachmentsBefore) record.recovery else null,
             reviewState = validator.state(record.timeStarted, boundary),
         )
         val after = record.copy(
             timeStarted = boundary, tags = if (attachmentsBefore) plain else record.tags,
+            unfinishedReason = if (attachmentsBefore) null else record.unfinishedReason,
             recovery = if (attachmentsBefore) null else record.recovery,
             reviewState = validator.state(boundary, record.timeEnded),
         )
@@ -274,7 +287,7 @@ class RecordMutationRepoImpl @Inject constructor(
         val ratingIds = settings?.let { setOf(it.happinessTagId, it.meaningTagId) }.orEmpty()
         tags.filter { it.tagId in ratingIds }.forEach {
             val value = it.numericValue
-            if (value != null && (value !in (if (it.tagId == settings?.meaningTagId) -5.0 else 1.0)..5.0 || value % 1.0 != 0.0)) fail(RecordMutationError.INVALID_SCORE)
+            if (value != null && (value !in -5.0..5.0 || value % 1.0 != 0.0)) fail(RecordMutationError.INVALID_SCORE)
         }
     }
 
@@ -289,7 +302,7 @@ class RecordMutationRepoImpl @Inject constructor(
     }
 
     private suspend fun write(record: Record): Long {
-        val id = database.recordDao().insert(recordMapper.map(record))
+        val id = database.recordDao().insert(recordMapper.map(record.copy(reviewState = com.example.util.simpletimetracker.domain.record.model.RecordReviewState.CONFIRMED)))
         database.recordToRecordTagDao().deleteAllByRecordId(id)
         database.recordToRecordTagDao().insert(record.tags.map { tagMapper.map(id, it) })
         return id
@@ -327,10 +340,11 @@ class RecordMutationRepoImpl @Inject constructor(
         database.runningRecordDao().delete(id)
     }
 
-    private fun ended(record: RunningRecord, end: Long): Record = Record(
+    private fun ended(record: RunningRecord, end: Long, now: Long = end): Record = Record(
         typeId = record.id, timeStarted = record.timeStarted, timeEnded = end, comment = record.comment,
         tags = record.tags, summary = record.summary, zoneId = record.zoneId, templateId = record.templateId,
         reviewState = validator.state(record.timeStarted, end),
+        isUnfinishedFocus = record.timerSession?.let { it.policy.isUnfinished(it.startedAt, now) } == true,
     )
 
     private fun fail(reason: RecordMutationError): Nothing = throw RecordMutationException(reason)

@@ -39,8 +39,10 @@ export function registerAi(app: FastifyInstance, store: BackupStore) {
     if (params.collection === 'records') items = s.records.filter(r => r.timeStarted < until && r.timeEnded > from).sort((a, b) => a.timeStarted - b.timeStarted || a.id.localeCompare(b.id)).map(r => recordText(s, r));
     else if (params.collection === 'tasks') items = [...s.planTasks].sort((a, b) => a.id.localeCompare(b.id));
     else if (params.collection === 'plans') items = occurrences(s.planSchedules, s.planExceptions, from, until).map(p => {
-      const links = s.planRecordLinks.filter(l => l.occurrenceId === p.id && l.recordId != null);
+      const allLinks = s.planRecordLinks.filter(l => l.occurrenceId === p.id && l.recordId != null);
+      const links = allLinks.filter(l => s.records.some(r => r.id === l.recordId && !r.isUnfinishedFocus));
       return { ...p, linkedRecordIds: [...new Set(links.map(l => l.recordId))],
+        unfinishedFocusRecordIds: [...new Set(allLinks.filter(l => s.records.some(r => r.id === l.recordId && r.isUnfinishedFocus)).map(l => l.recordId))],
         actualMillis: unionMillis(links.map(l => ({ start: l.timeStarted, end: l.timeEnded! })), from, Math.min(until, s.createdAt)) };
     });
     else items = s.weeklyReviews.filter(r => { const d = DateTime.fromISO(r.weekStart, { zone: r.zoneId }); return d.toMillis() < until && d.plus({ days: 7 }).toMillis() > from; }).sort((a, b) => a.weekStart.localeCompare(b.weekStart) || a.id.localeCompare(b.id));

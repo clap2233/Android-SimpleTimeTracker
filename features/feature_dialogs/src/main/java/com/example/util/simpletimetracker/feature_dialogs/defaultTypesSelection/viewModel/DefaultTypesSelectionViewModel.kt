@@ -37,6 +37,7 @@ class DefaultTypesSelectionViewModel @Inject constructor(
     private val resourceRepo: ResourceRepo,
     private val externalViewsInteractor: UpdateExternalViewsInteractor,
     private val commonViewDataMapper: CommonViewDataMapper,
+    private val defaults: com.example.util.simpletimetracker.domain.rhythm.ActivityDefaultsInstaller,
 ) : ViewModel() {
 
     val types: LiveData<List<ViewHolderType>> by lazy {
@@ -67,7 +68,7 @@ class DefaultTypesSelectionViewModel @Inject constructor(
         viewModelScope.launch {
             recordTypes.filter { it.id in typeIdsSelected }.forEach {
                 // Remove ids for correct adding in database.
-                recordTypeInteractor.add(it.copy(id = 0))
+                defaults.enableRoot(checkNotNull(it.presetKey))
             }
             if (!prefsInteractor.hasCardOrder()) {
                 prefsInteractor.setCardOrder(CardOrder.COLOR)
@@ -145,8 +146,9 @@ class DefaultTypesSelectionViewModel @Inject constructor(
         return result
     }
 
-    private fun loadRecordTypes(): List<RecordType> {
-        return getDefaultRecordTypesInteractor.execute()
+    private suspend fun loadRecordTypes(): List<RecordType> {
+        val existing = recordTypeInteractor.getAll().mapNotNull { it.presetKey }.toSet()
+        return getDefaultRecordTypesInteractor.execute().filter { it.presetKey !in existing }
     }
 
     companion object {

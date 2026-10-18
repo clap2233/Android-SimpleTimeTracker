@@ -110,7 +110,10 @@ class ChangeRecordTypeViewModel @Inject constructor(
 
     private val recordTypeId: Long get() = (extra as? ChangeRecordTypeParams.Change)?.id.orZero()
     private var initialCategories: Set<Long> = emptySet()
-    val timerPolicy = MutableLiveData(com.example.util.simpletimetracker.domain.rhythm.TimerPolicy())
+    val timerPolicy = MutableLiveData<com.example.util.simpletimetracker.domain.rhythm.TimerPolicy?>(null)
+    val parentGroups = MutableLiveData<List<RecordType>>(emptyList())
+    val parentTypeId = MutableLiveData<Long?>(null)
+    val parentSelectionEnabled = MutableLiveData(true)
 
     private var newName: String = ""
     private var newCategories: MutableList<Long> = mutableListOf()
@@ -159,6 +162,11 @@ class ChangeRecordTypeViewModel @Inject constructor(
             newNote = note
             updateNoteState()
         }
+    }
+
+    fun onParentSelected(id: Long?) {
+        if (parentSelectionEnabled.value != true) return
+        parentTypeId.value = id
     }
 
     fun onColorChooserClick() {
@@ -371,14 +379,16 @@ class ChangeRecordTypeViewModel @Inject constructor(
     }
 
     private suspend fun saveRecordType(): Long {
-        val recordType = RecordType(
+        val original = recordTypeInteractor.get(recordTypeId) ?: RecordType(name = newName, icon = iconSelectionViewModelDelegateImpl.newIcon, color = colorSelectionViewModelDelegate.newColor, defaultDuration = newDefaultDuration, note = newNote)
+        val recordType = original.copy(
             id = recordTypeId,
             name = newName.trimIfNotBlank(),
             icon = iconSelectionViewModelDelegateImpl.newIcon,
             color = colorSelectionViewModelDelegate.newColor,
             defaultDuration = newDefaultDuration,
             note = newNote,
-            timerPolicy = requireNotNull(timerPolicy.value),
+            timerPolicy = timerPolicy.value,
+            parentTypeId = parentTypeId.value,
         )
 
         return recordTypeInteractor.add(recordType)
@@ -401,11 +411,16 @@ class ChangeRecordTypeViewModel @Inject constructor(
     }
 
     private suspend fun initializeRecordTypeData() {
+        val allTypes = recordTypeInteractor.getAll()
+        parentGroups.value = allTypes.filter { !it.hidden && it.parentTypeId == null && it.presetKey != null && it.presetKey?.contains(".") == false && it.id != recordTypeId }
         recordTypeInteractor.get(recordTypeId)?.let {
             newName = it.name
             newDefaultDuration = it.defaultDuration
             newNote = it.note
             timerPolicy.value = it.timerPolicy
+            parentTypeId.value = it.parentTypeId
+            parentSelectionEnabled.value = !(it.parentTypeId == null &&
+                (it.presetKey != null && it.presetKey?.contains(".") == false || allTypes.any { child -> child.parentTypeId == it.id }))
             iconSelectionViewModelDelegateImpl.newIcon = it.icon
             colorSelectionViewModelDelegate.newColor = it.color
             goalsViewModelDelegate.initialize(RecordTypeGoal.IdData.Type(it.id))

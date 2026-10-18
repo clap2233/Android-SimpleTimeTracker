@@ -20,6 +20,14 @@ class TimerPolicyTest {
             assertNull(policy.nextReminder(1_000, now, 900_000))
         }
     }
+    @Test fun unfinishedFocusOnlyCoversTheFirstFifteenMinutes() {
+        val policy = TimerPolicy(TimerPolicy.Mode.FOCUS_EXIT)
+        listOf(0L, 8 * 60_000, 899_999).forEach { assertTrue(policy.isUnfinished(1_000, 1_000 + it)) }
+        listOf(900_000L, 959_999, 22 * 60_000, 37 * 60_000).forEach { assertFalse(policy.isUnfinished(1_000, 1_000 + it)) }
+        assertFalse(policy.isUnfinished(1_000, 999))
+        assertFalse(TimerPolicy().isUnfinished(1_000, 481_000))
+        assertFalse(TimerPolicy(TimerPolicy.Mode.INTERVAL, 30).isUnfinished(1_000, 481_000))
+    }
     @Test fun periodicRemindersStayOnStartRelativePhase() {
         val policy = TimerPolicy(TimerPolicy.Mode.INTERVAL, 30)
         assertEquals(3_601_000L, policy.nextReminder(1_000, 2_700_000, 900_000))
@@ -27,7 +35,7 @@ class TimerPolicyTest {
     }
     @Test fun ordinaryModePreservesDisabledRemindersAndNeverBlocksExit() {
         assertNull(TimerPolicy().nextReminder(1_000, 2_000, 0))
-        assertEquals(901_000L, TimerPolicy().nextReminder(1_000, 2_000, 900_000))
+        assertNull(TimerPolicy().nextReminder(1_000, 2_000, 900_000))
         assertFalse(TimerPolicy().needsExitConfirmation(1_000, 481_000))
     }
     @Test fun intervalAndModeMustAgree() {

@@ -50,7 +50,7 @@ class LifeClockStopRecordTest {
                 summary = running.summary,
                 zoneId = null,
                 templateId = running.templateId,
-                reviewState = RecordReviewState.PENDING,
+                reviewState = RecordReviewState.CONFIRMED,
             ),
             stored.firstValue.single(),
         )

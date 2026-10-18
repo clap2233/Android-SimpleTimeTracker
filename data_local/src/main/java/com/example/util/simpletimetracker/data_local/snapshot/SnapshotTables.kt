@@ -24,10 +24,16 @@ internal object SnapshotTables {
         SnapshotValidation.validate(root)
         val fromPublic = publicTables(root)
         val upstream = root.get("upstreamData")?.takeUnless(JsonElement::isJsonNull)?.asJsonObject ?: return fromPublic
-        require(SnapshotJson.number(upstream, "databaseVersion") in 36L..38L)
+        val databaseVersion = SnapshotJson.number(upstream, "databaseVersion")
+        require(databaseVersion in 36L..40L)
         val raw = requireNotNull(upstream.getAsJsonObject("tables"))
         require(raw.keySet().all { it in names }) { "Unknown backup table" }
         val tables = names.associateWith { SnapshotJson.array(raw, it).deepCopy() }
+        SnapshotJson.objects(tables.getValue("records")).forEach { row ->
+            if (databaseVersion < 40) require((row.optionalLong("is_unfinished_focus") ?: 0L) == 0L && row.get("unfinished_reason").let { it == null || it.isJsonNull })
+            if (!row.has("is_unfinished_focus")) row.addProperty("is_unfinished_focus", "0")
+            if (!row.has("unfinished_reason")) row.add("unfinished_reason", com.google.gson.JsonNull.INSTANCE)
+        }
         val codec = SnapshotCodec()
         val metadata = root.getAsJsonObject("businessSettings") ?: JsonObject()
         val photos = SnapshotJson.array(root, "photos")
@@ -67,6 +73,7 @@ internal object SnapshotTables {
                 "recordTypes", "id" to id(row, "id"), "name" to text(row, "name"), "icon" to text(row, "icon"),
                 "color" to SnapshotJson.number(color(row), "colorId"), "color_int" to text(color(row), "colorInt"),
                 "hidden" to SnapshotJson.bool(row, "hidden"), "instant" to false, "instantDuration" to SnapshotJson.number(row, "defaultDuration"), "note" to text(row, "note"),
+                "parent_type_id" to SnapshotJson.nullableId(row, "parentTypeId"), "preset_key" to row.get("presetKey"),
             )
         }
         objects("categories").forEach { row ->
@@ -100,6 +107,7 @@ internal object SnapshotTables {
             add(
                 "records", "id" to key, "type_id" to id(row, "typeId", true), "time_started" to SnapshotJson.number(row, "timeStarted"), "time_ended" to SnapshotJson.number(row, "timeEnded"),
                 "tag_id" to 0L, "review_state" to if (SnapshotJson.text(row, "reviewState", "PENDING") == "CONFIRMED") 1L else 0L, *context(row),
+                "is_unfinished_focus" to SnapshotJson.bool(row, "isUnfinishedFocus"), "unfinished_reason" to row.get("unfinishedReason"),
             )
             joinTags(row, "recordToRecordTag", "record_id", key)
         }
@@ -150,7 +158,8 @@ internal object SnapshotTables {
             add("reviewTrials", "id" to dbo.id, "review_id" to dbo.reviewId, "content_json" to dbo.contentJson)
         }
         val ratings = requireNotNull(root.getAsJsonObject("ratingTagIds"))
-        add("lifeClockSettings", "id" to 1L, "data_set_id" to SnapshotJson.text(root, "dataSetId"), "happiness_tag_id" to id(ratings, "happinessTagId"), "meaning_tag_id" to id(ratings, "meaningTagId"))
+        add("lifeClockSettings", "id" to 1L, "data_set_id" to SnapshotJson.text(root, "dataSetId"), "happiness_tag_id" to id(ratings, "happinessTagId"), "meaning_tag_id" to id(ratings, "meaningTagId"),
+            "activity_defaults_version" to if (root.has("activityDefaultsVersion")) SnapshotJson.number(root, "activityDefaultsVersion") else 0L)
         SnapshotV3.decode(root, result)
         return result
     }
@@ -166,10 +175,15 @@ internal object SnapshotTables {
             records.add(
                 active.deepCopy().apply {
                     remove("timer_session")
+                    val session = active.get("timer_session")?.takeUnless(JsonElement::isJsonNull)?.asString
+                        ?.let(com.example.util.simpletimetracker.data_local.planning.PlanningJson::session)
+                    val unfinished = session?.let { it.policy.isUnfinished(it.startedAt, createdAt) } == true
                     addProperty("type_id", active.text("id"))
                     addProperty("id", newId.toString())
                     addProperty("time_ended", createdAt.toString())
                     addProperty("review_state", "0")
+                    addProperty("is_unfinished_focus", if (unfinished) "1" else "0")
+                    add("unfinished_reason", com.google.gson.JsonNull.INSTANCE)
                 },
             )
             SnapshotJson.objects(requireNotNull(result["runningRecordToRecordTag"])).filter { it.long("running_record_id") == active.long("id") }.forEach { tag ->

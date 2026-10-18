@@ -113,8 +113,7 @@ class ChangeRecordViewModel @Inject constructor(
         }
     }
     val removeRecordId: LiveData<Long> = SingleLiveEvent()
-    val reviewStatus: LiveData<Int> = MutableLiveData(0)
-    private var requestedState: RecordReviewState? = null
+    val timeError: LiveData<com.example.util.simpletimetracker.domain.record.model.RecordMutationError?> = MutableLiveData()
 
     private val recordId: Long? get() = (extra as? ChangeRecordParams.Tracked)?.id
 
@@ -122,22 +121,23 @@ class ChangeRecordViewModel @Inject constructor(
         viewModelScope.launch {
             updateCategoriesViewData()
             val saved = recordInteractor.get(recordId.orZero())
-            val status = saved?.reviewState?.storageValue ?: 0
-            val invalid = saved?.let {
-                runCatching {
+            val error = saved?.let {
+                try {
                     timeValidator.validate(
-                        listOf(it.copy(reviewState = RecordReviewState.PENDING)),
-                        recordInteractor.getAll().filter { other -> other.id != it.id }, runningRecordInteractor.getAll(), System.currentTimeMillis(),
+                        listOf(it),
+                        recordInteractor.getAllIncludingUnfinished().filter { other -> other.id != it.id }, runningRecordInteractor.getAll(), System.currentTimeMillis(),
                     )
-                }.isFailure
-            } ?: false
-            (reviewStatus as MutableLiveData).value = if (invalid) 2 else status
+                    null
+                } catch (error: RecordMutationException) {
+                    error.reason
+                }
+            }
+            (timeError as MutableLiveData).value = error
         }
     }
 
-    fun saveAs(state: RecordReviewState) = viewModelScope.launch {
+    fun save() = viewModelScope.launch {
         if (saveButtonEnabled.value == false) return@launch
-        requestedState = state
         saveButtonEnabled.set(false)
         onSaveClickDelegate {}
     }
@@ -155,7 +155,7 @@ class ChangeRecordViewModel @Inject constructor(
 
     suspend fun neighbor(previous: Boolean): Record? {
         val current = recordInteractor.get(recordId.orZero()) ?: return null
-        val others = recordInteractor.getAll().filter { it.id != current.id }
+        val others = recordInteractor.getAllIncludingUnfinished().filter { it.id != current.id }
         return if (previous) {
             others.filter { it.timeStarted < current.timeStarted }.maxByOrNull { it.timeStarted }
         } else {
@@ -253,11 +253,6 @@ class ChangeRecordViewModel @Inject constructor(
         // Zero id creates new record
         val id = recordId.orZero()
         val original = recordInteractor.get(id)
-        val reviewState = requestedState ?: if (original?.timeStarted == newTimeStarted && original.timeEnded == newTimeEnded) {
-            original.reviewState
-        } else {
-            RecordReviewState.PENDING
-        }
         val initial = original ?: Record(
             typeId = newTypeId,
             timeStarted = newTimeStarted,
@@ -272,7 +267,7 @@ class ChangeRecordViewModel @Inject constructor(
             timeEnded = newTimeEnded,
             comment = commentSelectionViewModelDelegate.newComment,
             tags = newTags,
-            reviewState = reviewState,
+            reviewState = RecordReviewState.CONFIRMED,
             summary = detailDraft.summary,
             recovery = detailDraft.recovery.value,
         )
@@ -352,6 +347,7 @@ class ChangeRecordViewModel @Inject constructor(
 
     override suspend fun initializePreviewViewData() {
         val originalDetails = recordInteractor.get(recordId.orZero())
+        detailDraft.isUnfinishedFocus = originalDetails?.isUnfinishedFocus == true
         if (detailDraft.ready.value != true) detailDraft.recovery.value = originalDetails?.recovery
         detailDraft.load(originalDetails?.summary.orEmpty(), recordId.orZero(), false)
         when (extra) {

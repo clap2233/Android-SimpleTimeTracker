@@ -65,6 +65,7 @@ class RecordDetailsController(
         }
         var catalog = emptyList<com.example.util.simpletimetracker.domain.recordTag.model.RecordTag>()
         fun render() {
+            entry.lifeClockUnfinishedStatus.visibility = if (draft.isUnfinishedFocus) android.view.View.VISIBLE else android.view.View.GONE
             fun score(id: Long?) = vm.detailValues().firstOrNull { it.tagId == id }?.numericValue?.toInt()?.toString() ?: fragment.getString(R.string.life_clock_unrated)
             entry.lifeClockHappinessButton.text = fragment.getString(R.string.life_clock_happiness_entry_value, score(draft.identity?.happinessTagId))
             entry.lifeClockMeaningButton.text = fragment.getString(R.string.life_clock_meaning_entry_value, score(draft.identity?.meaningTagId))
@@ -127,7 +128,7 @@ class RecordDetailsController(
         val vm = model()
         val identity = vm.detailDraft.identity ?: return
         val id = if (meaning) identity.meaningTagId else identity.happinessTagId
-        val values = listOf<Int?>(null) + (if (meaning) -5..5 else 1..5).toList()
+        val values = listOf<Int?>(null) + (-5..5).toList()
         val items = values.map { it?.toString() ?: fragment.getString(R.string.life_clock_empty) }.toTypedArray()
         val current = values.indexOf(vm.detailValues().firstOrNull { it.tagId == id }?.numericValue?.toInt())
         MaterialAlertDialogBuilder(fragment.requireContext())

@@ -8,11 +8,15 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.room.withTransaction
+import com.example.util.simpletimetracker.data_local.database.AppDatabase
+import com.example.util.simpletimetracker.domain.rhythm.ActivityPolicy
 
 @Singleton
 class RecordTypeRepoImpl @Inject constructor(
     private val recordTypeDao: RecordTypeDao,
     private val recordTypeDataLocalMapper: RecordTypeDataLocalMapper,
+    private val database: AppDatabase,
 ) : RecordTypeRepo {
 
     private var cache: List<RecordType>? = null
@@ -39,7 +43,15 @@ class RecordTypeRepoImpl @Inject constructor(
 
     override suspend fun add(recordType: RecordType): Long = mutex.withLockedCache(
         logMessage = "add",
-        accessSource = { recordTypeDao.insert(recordType.let(recordTypeDataLocalMapper::map)) },
+        accessSource = { database.withTransaction {
+            recordType.parentTypeId?.let { parentId ->
+                require(parentId != recordType.id)
+                require(recordTypeDao.get(parentId)?.parentTypeId == null && recordTypeDao.get(parentId) != null)
+                require(recordTypeDao.getAll().none { it.parentTypeId == recordType.id && recordType.id != 0L })
+            }
+            require(recordType.presetKey == null || recordTypeDao.getAll().none { it.id != recordType.id && it.presetKey == recordType.presetKey })
+            recordTypeDao.insert(recordType.let(recordTypeDataLocalMapper::map))
+        } },
         afterSourceAccess = { cache = null },
     )
 
@@ -57,8 +69,14 @@ class RecordTypeRepoImpl @Inject constructor(
 
     override suspend fun remove(id: Long) = mutex.withLockedCache(
         logMessage = "remove",
-        accessSource = { recordTypeDao.delete(id) },
-        afterSourceAccess = { cache = cache?.removeIf { it.id == id } },
+        accessSource = { database.withTransaction {
+            val all = recordTypeDao.getAll().map(recordTypeDataLocalMapper::map)
+            all.filter { it.parentTypeId == id }.forEach { child ->
+                recordTypeDao.insert(recordTypeDataLocalMapper.map(child.copy(parentTypeId = null, timerPolicy = ActivityPolicy.resolve(child, all))))
+            }
+            recordTypeDao.delete(id)
+        } },
+        afterSourceAccess = { cache = null },
     )
 
     override suspend fun clear() = mutex.withLockedCache(

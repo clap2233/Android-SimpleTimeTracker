@@ -9,4 +9,6 @@
     <item name="reviewSave" type="id" />
     <item name="reviewPins" type="id" />
     <item name="reviewTrial" type="id" />
+    <item name="reviewUnfinishedSummary" type="id" />
+    <item name="reviewUnfinishedReason" type="id" />
 </resources>

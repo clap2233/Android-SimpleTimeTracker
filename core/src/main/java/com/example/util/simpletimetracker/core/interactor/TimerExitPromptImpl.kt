@@ -53,8 +53,13 @@ class TimerExitPromptImpl @Inject constructor(@ApplicationContext private val co
         if (pending == null || dialog != null) return
         val minutes = ((System.currentTimeMillis() - current.startedAt).coerceAtLeast(0) / 60_000L)
         val remaining = 15 - minutes % 15
+        val message = if (minutes < 15) {
+            "已专注 $minutes 分钟，还差约 $remaining 分钟达到最小专注时长。现在${if (switching) "切换" else "结束"}将保留在回顾的未完成专注中，不计入正式总时长。"
+        } else {
+            "已专注 $minutes 分钟，可以再继续约 $remaining 分钟，也可以现在${if (switching) "切换" else "结束"}。"
+        }
         dialog = AlertDialog.Builder(host).setTitle("可以现在结束，也可以再专注一会")
-            .setMessage("已专注 $minutes 分钟，可以再继续约 $remaining 分钟，也可以现在${if (switching) "切换" else "结束"}。")
+            .setMessage(message)
             .setNegativeButton(if (switching) "现在切换" else "现在结束") { _, _ -> finish(true) }
             .setPositiveButton("继续专注") { _, _ -> finish(false) }
             .setOnCancelListener { finish(false) }.create().also { it.show() }

@@ -212,6 +212,11 @@ class WeekReviewViewModel @Inject constructor(
         mutations.save(listOf(record.copy(templateId = id)))
     }
 
+    fun saveUnfinishedReason(id: Long, reason: String) = work {
+        check(records.updateUnfinishedReason(id, reason.trim().takeIf(String::isNotBlank)))
+        message.setValue(if (reason.isBlank()) "未完成原因已清除" else "未完成原因已保存")
+    }
+
     fun caption(record: Record, data: WeekReviewScreen): String = record.summary.ifBlank {
         data.types.find { it.id == record.typeId }?.name ?: "未分类"
     }
@@ -263,7 +268,7 @@ class WeekReviewViewModel @Inject constructor(
                 saved["dataSetId"] = identity.dataSetId
                 saved["epoch"] = token
             }
-            val all = records.getAll()
+            val all = records.getAllIncludingUnfinished()
             val active = running.getAll()
             val review = reviews.getReview(week, zoneId) ?: WeeklyReview(weekStart = week, zoneId = zoneId)
             val now = System.currentTimeMillis()

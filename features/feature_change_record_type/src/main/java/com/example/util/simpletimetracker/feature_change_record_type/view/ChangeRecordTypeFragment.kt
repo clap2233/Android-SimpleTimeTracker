@@ -181,9 +181,32 @@ class ChangeRecordTypeFragment :
 
     override fun initUx(): Unit = with(binding) {
         lifeClockTimerPolicy.setOnClickListener {
-            com.example.util.simpletimetracker.core.view.TimerPolicyEditor.show(requireContext(), viewModel.timerPolicy.value, false) { viewModel.timerPolicy.value = requireNotNull(it) }
+            com.example.util.simpletimetracker.core.view.TimerPolicyEditor.show(requireContext(), viewModel.timerPolicy.value, true) { viewModel.timerPolicy.value = it }
         }
-        viewModel.timerPolicy.observe(viewLifecycleOwner) { lifeClockTimerPolicy.text = "计时节奏：" + com.example.util.simpletimetracker.core.view.TimerPolicyEditor.label(it) }
+        viewModel.timerPolicy.observe(viewLifecycleOwner) {
+            lifeClockTimerPolicy.text = "计时节奏：" + if (it == null) "跟随所属分组（无分组时自由计时）"
+            else com.example.util.simpletimetracker.core.view.TimerPolicyEditor.label(it)
+        }
+        lifeClockParentGroup.setOnClickListener {
+            val groups = viewModel.parentGroups.value.orEmpty()
+            val current = groups.indexOfFirst { it.id == viewModel.parentTypeId.value } + 1
+            androidx.appcompat.app.AlertDialog.Builder(requireContext()).setTitle("所属分组")
+                .setSingleChoiceItems((listOf("未分组") + groups.map { it.name }).toTypedArray(), current) { dialog, index ->
+                    viewModel.onParentSelected(groups.getOrNull(index - 1)?.id)
+                    dialog.dismiss()
+                }.setNegativeButton("取消", null).show()
+        }
+        fun updateParentLabel() {
+            val selected = viewModel.parentGroups.value.orEmpty().find { it.id == viewModel.parentTypeId.value }
+            lifeClockParentGroup.text = "所属分组：" + if (viewModel.parentSelectionEnabled.value == false) "当前活动为分组"
+                else selected?.name ?: "未分组"
+        }
+        viewModel.parentGroups.observe(viewLifecycleOwner) { updateParentLabel() }
+        viewModel.parentTypeId.observe(viewLifecycleOwner) { updateParentLabel() }
+        viewModel.parentSelectionEnabled.observe(viewLifecycleOwner) {
+            lifeClockParentGroup.isEnabled = it
+            updateParentLabel()
+        }
         etChangeRecordTypeName.doAfterTextChanged { viewModel.onNameChange(it.toString()) }
         etChangeRecordTypeNote.doAfterTextChanged { viewModel.onNoteChange(it.toString()) }
         fieldChangeRecordTypeColor.setOnClick(viewModel::onColorChooserClick)

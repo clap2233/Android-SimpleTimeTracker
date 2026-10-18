@@ -12,6 +12,48 @@ import com.example.util.simpletimetracker.domain.rhythm.TimerSession
 
 class SnapshotV3Test {
     private fun fixture() = SnapshotJson.parse(File("../shared/fixtures/snapshot-v1.json").readText())
+    @Test fun v3RoundTripPreservesGroupingDefaultsAndBothSignedScores() {
+        val root = fixture().apply { addProperty("schemaVersion", 3); addProperty("activityDefaultsVersion", 1) }
+        val types = SnapshotJson.objects(root.getAsJsonArray("recordTypes"))
+        types[0].addProperty("presetKey", "learning")
+        types[1].addProperty("presetKey", "learning.english")
+        types[1].addProperty("parentTypeId", types[0].text("id"))
+        val ratings = root.getAsJsonObject("ratingTagIds")
+        val selected = SnapshotJson.objects(root.getAsJsonArray("records")[1].asJsonObject.getAsJsonArray("tags"))
+        listOf(-5, 0, 5, null).forEach { score ->
+            selected.filter { it.text("tagId") in setOf(ratings.get("happinessTagId").asString, ratings.get("meaningTagId").asString) }.forEach {
+                if (score == null) it.add("numericValue", JsonNull.INSTANCE) else it.addProperty("numericValue", score)
+            }
+            val tables = SnapshotTables.decode(root)
+            val encoded = SnapshotCodec().encode(tables, SnapshotJson.array(root, "photos"), root.getAsJsonObject("businessSettings"), root.get("createdAt").asLong, root.get("snapshotId").asString)
+            assertEquals(4, encoded.get("schemaVersion").asInt)
+            assertEquals(40, encoded.getAsJsonObject("upstreamData").get("databaseVersion").asInt)
+            assertEquals(1, encoded.get("activityDefaultsVersion").asInt)
+            assertEquals("learning.english", encoded.getAsJsonArray("recordTypes")[1].asJsonObject.text("presetKey"))
+            assertEquals(types[0].text("id"), encoded.getAsJsonArray("recordTypes")[1].asJsonObject.text("parentTypeId"))
+            assertEquals(root.get("records"), encoded.get("records"))
+            assertEquals(tables.getValue("recordTypes"), SnapshotTables.decode(encoded).getValue("recordTypes"))
+        }
+    }
+    @Test fun groupingRejectsMissingCircularDeepAndDuplicatePresetReferences() {
+        val mutations: List<(List<com.google.gson.JsonObject>) -> Unit> = listOf(
+            { it[0].addProperty("parentTypeId", "99999") },
+            { it[0].addProperty("parentTypeId", it[0].text("id")) },
+            { it[0].addProperty("parentTypeId", it[1].text("id")); it[1].addProperty("parentTypeId", it[0].text("id")) },
+            { it[1].addProperty("parentTypeId", it[0].text("id")); it[2].addProperty("parentTypeId", it[1].text("id")) },
+            { it[0].addProperty("presetKey", "same"); it[1].addProperty("presetKey", "same") },
+            { it[0].addProperty("presetKey", " ") },
+        )
+        mutations.forEach { mutate ->
+            val root = fixture().apply { addProperty("schemaVersion", 3) }
+            mutate(SnapshotJson.objects(root.getAsJsonArray("recordTypes")))
+            assertTrue(runCatching { SnapshotTables.decode(root) }.isFailure)
+        }
+        val legacy = fixture().apply { addProperty("schemaVersion", 2) }
+        val happy = SnapshotJson.objects(legacy.getAsJsonArray("records")[1].asJsonObject.getAsJsonArray("tags")).first { it.text("tagId") == legacy.getAsJsonObject("ratingTagIds").get("happinessTagId").asString }
+        happy.addProperty("numericValue", -1)
+        assertTrue(runCatching { SnapshotValidation.validate(legacy) }.isFailure)
+    }
     @Test fun movedPlanDetailsRoundTripAndInvalidTypesAreRejected() {
         val root = fixture().apply { addProperty("schemaVersion", 2) }
         val plan = com.example.util.simpletimetracker.domain.planning.PlanSchedule(title = "reading", firstDate = "2026-10-12",

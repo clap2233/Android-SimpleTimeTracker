@@ -21,6 +21,7 @@ class RecordMutationFeedbackImpl @Inject constructor(
             RecordMutationError.MULTIPLE_RUNNING -> R.string.life_clock_multiple_running
             RecordMutationError.GAP -> R.string.life_clock_gap
             RecordMutationError.TAG_CONFLICT -> R.string.life_clock_tag_conflict
+            RecordMutationError.FOCUS_RESULT_CONFLICT -> R.string.life_clock_focus_result_conflict
             RecordMutationError.INVALID_SCORE -> R.string.life_clock_invalid_score
             RecordMutationError.RESERVED_TAG -> R.string.life_clock_reserved_rating
             RecordMutationError.DATA_RESTORING -> R.string.life_clock_data_restoring

@@ -1,7 +1,7 @@
 import './style.css';
 import { DateTime } from 'luxon';
 import { validateSnapshot, type Snapshot, type Experience } from '../shared/snapshot.js';
-import { weekStart, weekStats, rating, usableComparisons } from '../shared/statistics.js';
+import { groupId, weekStart, weekStats, usableComparisons } from '../shared/statistics.js';
 import { experienceScores, rangeStats, unionMillis } from '../shared/analysis.js';
 import { occurrences } from '../shared/planning.js';
 
@@ -87,12 +87,12 @@ function render() {
   }
   filters.append(button('清除筛选', () => { people = []; environments = []; render(); })); app.append(filters);
   const summary = element('section', '', 'summary');
-  for (const [label, value] of [['已确认', stats.confirmedMs], ['待整理', stats.pendingMs], ['进行中', stats.runningMs], [people.length || environments.length ? '未匹配筛选' : '未记录', stats.unrecordedMs]] as const) {
+  for (const [label, value] of [['已记录', stats.confirmedMs], ['未完成专注', stats.unfinishedFocusMs], ['进行中', stats.runningMs], [people.length || environments.length ? '未匹配筛选' : '未记录', stats.unrecordedMs]] as const) {
     const item = element('div'); item.append(element('span', label, 'eyebrow'), element('strong', duration(value))); summary.append(item);
   }
   app.append(summary);
   const spread = element('section', '', 'spread'); const time = element('section', '', 'timeline-panel');
-  time.append(element('h2', '一周色带'), element('p', '实色已确认 · 虚线待整理 · 实边框进行中 · 淡底色为未来。点击色块查看经历。', 'muted'));
+  time.append(element('h2', '一周色带'), element('p', '实色为已记录经历 · 实边框为进行中 · 淡底色为未来。点击色块查看经历。', 'muted'));
   const grid = element('div', '', 'week-grid'), labels = element('div', '', 'hour-labels');
   for (let i = 0; i <= 24; i++) { const label = element('span', `${String(i).padStart(2,'0')}:00`); label.style.top = `${i / 24 * 100}%`; labels.append(label); }
   grid.append(labels);
@@ -123,23 +123,32 @@ function render() {
     column.append(track); grid.append(column);
   });
   time.append(grid); spread.append(time);
-  const aside = element('aside', '', 'analysis'); aside.append(element('h2', '时间花在哪里'), element('p', `已确认 ${duration(stats.confirmedMs)}；待整理与进行中单列。`, 'muted'));
-  for (const [id] of Object.entries(stats.byType).sort(([a],[b]) => (stats.confirmedByType[b] ?? 0) - (stats.confirmedByType[a] ?? 0))) {
+  const aside = element('aside', '', 'analysis'); aside.append(element('h2', '时间花在哪里'), element('p', `已记录 ${duration(stats.confirmedMs)}；进行中单列。`, 'muted'));
+  for (const [id] of Object.entries(stats.byGroup).sort(([a],[b]) => (stats.confirmedByGroup[b] ?? 0) - (stats.confirmedByGroup[a] ?? 0))) {
     const type = s.recordTypes.find(t => t.id === id), item = element('div', '', 'category');
     const heading = element('strong', type?.name ?? '未分类'); heading.style.borderLeftColor = color(type);
-    const amount = stats.confirmedByType[id] ?? 0, bar = element('div', '', 'bar'); bar.style.width = `${stats.confirmedMs ? amount / stats.confirmedMs * 100 : 0}%`; bar.style.backgroundColor = color(type);
-    const pending = stats.blocks.filter(b => b.typeId === id && b.state === 'PENDING').reduce((n,b) => n+b.end-b.start,0), running = stats.blocks.filter(b => b.typeId === id && b.state === 'RUNNING').reduce((n,b) => n+b.end-b.start,0);
-    item.append(heading, element('span', duration(amount)), bar, element('small', `待整理 ${duration(pending)} · 进行中 ${duration(running)}`)); aside.append(item);
+    const amount = stats.confirmedByGroup[id] ?? 0, bar = element('div', '', 'bar'); bar.style.width = `${stats.confirmedMs ? amount / stats.confirmedMs * 100 : 0}%`; bar.style.backgroundColor = color(type);
+    const running = stats.blocks.filter(b => groupId(s, b.typeId) === id && b.state === 'RUNNING').reduce((n,b) => n+b.end-b.start,0);
+    item.append(heading, element('span', duration(amount)), bar, element('small', `进行中 ${duration(running)}`));
+    for (const child of s.recordTypes.filter(t => t.parentTypeId === id)) if (stats.confirmedByType[child.id]) item.append(element('small', `${child.name} ${duration(stats.confirmedByType[child.id])}`));
+    aside.append(item);
   }
   for (const [name, scores] of [['快乐', stats.happiness], ['意义', stats.meaning]] as const) {
     const group = element('section', '', 'scores'); group.append(element('h3', name), element('p', `${scores.ratedCount} 条已评分 · ${scores.unratedCount} 条未评分`, 'muted'));
-    const bins = element('div', '', 'bins'); scores.distribution.forEach((count,i) => { const bin = element('div'); bin.append(element('strong', String(count)), element('span', `${i + (name === '意义' ? -5 : 1)} 分`)); bins.append(bin); }); group.append(bins); aside.append(group);
+    const bins = element('div', '', 'bins'); scores.distribution.forEach((count,i) => { const bin = element('div'); bin.append(element('strong', String(count)), element('span', `${i - 5} 分`)); bins.append(bin); }); group.append(bins); aside.append(group);
   }
   spread.append(aside); app.append(spread);
   const dayRecords = element('section', '', 'day-records'); dayRecords.id = 'day-records'; dayRecords.append(element('h2', `${stats.days[selectedDay].date} 的经历`));
   const records = stats.records.filter(r => r.timeStarted < stats.days[selectedDay].end && r.timeEnded > stats.days[selectedDay].start).sort((a,b) => a.timeStarted-b.timeStarted);
   if (!records.length) dayRecords.append(element('p', '这一天没有匹配的已记录经历。', 'muted'));
-  records.forEach(r => dayRecords.append(button(`${DateTime.fromMillis(r.timeStarted, { zone }).toFormat('HH:mm')}  ${title(r)} · ${duration(r.timeEnded-r.timeStarted)} · ${r.reviewState === 'CONFIRMED' ? '已确认' : '待整理'}`, () => detail(r.id), 'record-row'))); app.append(dayRecords);
+  records.forEach(r => dayRecords.append(button(`${DateTime.fromMillis(r.timeStarted, { zone }).toFormat('HH:mm')}  ${title(r)} · ${duration(r.timeEnded-r.timeStarted)}`, () => detail(r.id), 'record-row'))); app.append(dayRecords);
+  const unfinished = element('section', '', 'unfinished-focus');
+  unfinished.append(element('h2', '未完成专注'), element('p', `${stats.unfinishedFocusCount} 次 · 本周 ${duration(stats.unfinishedFocusMs)}。不计入正式总时长、类别、评分与恢复感；这些时段也不是未记录空白。原因可以在手机回顾中补填。`, 'muted'));
+  if (!stats.unfinishedFocus.length) unfinished.append(element('p', '本周没有匹配的未完成专注。', 'muted'));
+  for (const r of [...stats.unfinishedFocus].sort((a, b) => a.timeStarted - b.timeStarted)) {
+    unfinished.append(button(`${DateTime.fromMillis(r.timeStarted, { zone }).toFormat('MM-dd HH:mm:ss')} → ${DateTime.fromMillis(r.timeEnded, { zone }).toFormat('MM-dd HH:mm:ss')} · ${title(r)} · ${duration(r.timeEnded - r.timeStarted)}\n未完成原因：${r.unfinishedReason || '未填写'}`, () => detail(r.id), 'record-row'));
+  }
+  app.append(unfinished);
   if (stats.repairs.length) app.append(element('p', `另有 ${stats.repairs.length} 条待修复区间未计入统计，请在手机查看和整理。`, 'notice'));
   const review = s.weeklyReviews.find(r => r.weekStart === week && r.zoneId === zone);
   const reflection = element('section', '', 'reflection'); reflection.append(element('span', '本周的选择', 'eyebrow'), element('h2', '下周想保留什么？'));
@@ -151,8 +160,8 @@ function render() {
     const priorities = element('div', '', 'priorities'); priorities.append(element('h3','最近希望留出时间的事'));
     for (const id of review.pinnedTemplateIds) {
       const template = s.templates.find(t=>t.id===id); const actual = stats.records.filter(r=>r.templateId===id), ids=actual.map(r=>r.id);
-      const confirmed = actual.filter(r=>r.reviewState==='CONFIRMED'); const spent=(state:string)=>stats.blocks.filter(b=>b.state===state && (state==='RUNNING'? s.runningRecords.some(r=>r.id===b.id&&r.templateId===id):ids.includes(b.id))).reduce((n,b)=>n+b.end-b.start,0);
-      priorities.append(element('strong',template?.name||template?.summary||'已删除的模板'), element('p',`已确认 ${confirmed.length} 次 ${duration(spent('CONFIRMED'))} · 待整理 ${actual.length-confirmed.length} 次 ${duration(spent('PENDING'))} · 进行中 ${duration(spent('RUNNING'))}`));
+      const spent=(state:string)=>stats.blocks.filter(b=>b.state===state && (state==='RUNNING'? s.runningRecords.some(r=>r.id===b.id&&r.templateId===id):ids.includes(b.id))).reduce((n,b)=>n+b.end-b.start,0);
+      priorities.append(element('strong',template?.name||template?.summary||'已删除的模板'), element('p',`已记录 ${actual.length} 次 ${duration(spent('CONFIRMED'))} · 进行中 ${duration(spent('RUNNING'))}`));
     }
     if (!review.pinnedTemplateIds.length) priorities.append(element('p','没有置顶活动','muted')); reflection.append(priorities);
     const trials=element('div','','trials');trials.append(element('h3','换一种方式试一次'));
@@ -177,7 +186,7 @@ function scores(r: Experience) {
 }
 function renderPlanning(s: Snapshot, from: number, until: number) {
   const stats = rangeStats(s, from, until), panel = element('section', '', 'reflection');
-  panel.append(element('h2', '恢复感与个人节奏'), element('p', '统计本周已确认经历，不随人物／环境筛选变化；未填写保持为空。', 'muted'));
+  panel.append(element('h2', '恢复感与个人节奏'), element('p', '统计本周已结束经历，不随人物／环境筛选变化；未填写保持为空。', 'muted'));
   const summary = (r: typeof stats.recovery) => `更有精神 ${r.MORE_ENERGY} · 差不多 ${r.UNCHANGED} · 更累 ${r.MORE_TIRED} · 未填写 ${r.unrated}`;
   panel.append(element('p', summary(stats.recovery)));
   for (const item of stats.byTemplate) {
@@ -187,7 +196,8 @@ function renderPlanning(s: Snapshot, from: number, until: number) {
   panel.append(element('h2', '计划与实际经历'), element('p', `计划占用 ${duration(stats.plannedMillis)} · 缓冲 ${duration(stats.bufferMillis)} · 未安排 ${duration(stats.unplannedMillis)}。重叠按区间去重，缓冲单列；空白不等于休息。`, 'muted'));
   const status = { OPEN: '待进行', DONE: '已完成', SKIPPED: '已跳过', CANCELLED: '已取消' };
   for (const plan of occurrences(s.planSchedules, s.planExceptions, from, until)) {
-    const row = element('div', '', 'review-choice'), links = s.planRecordLinks.filter(l => l.occurrenceId === plan.id && l.recordId);
+    const row = element('div', '', 'review-choice'), allLinks = s.planRecordLinks.filter(l => l.occurrenceId === plan.id && l.recordId);
+    const links = allLinks.filter(l => s.records.some(r => r.id === l.recordId && !r.isUnfinishedFocus));
     const actual = unionMillis(links.map(l => ({ start: l.timeStarted, end: l.timeEnded! })), Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER);
     const kind = plan.schedule.kind === 'BUFFER' ? '缓冲' : plan.schedule.kind === 'FREE' ? '自由活动' : '计划';
     row.append(element('h3', `${plan.date} ${DateTime.fromMillis(plan.start, { zone }).toFormat('HH:mm')} · ${plan.schedule.title}`),
@@ -195,6 +205,10 @@ function renderPlanning(s: Snapshot, from: number, until: number) {
     for (const id of [...new Set(links.map(l => l.recordId))]) {
       const record = s.records.find(r => r.id === id);
       if (record) row.append(button(`${title(record)} · ${scores(record)}`, () => detail(record.id), 'memory'));
+    }
+    for (const id of [...new Set(allLinks.map(l => l.recordId))]) {
+      const record = s.records.find(r => r.id === id && r.isUnfinishedFocus);
+      if (record) row.append(button(`未完成专注 · ${title(record)} · ${duration(record.timeEnded - record.timeStarted)}（不计入关联实际时长）`, () => detail(record.id), 'memory'));
     }
     panel.append(row);
   }
@@ -207,10 +221,12 @@ function showMessage(text: string) { const dialog=element('dialog');dialog.appen
 function detail(id: string, running = false) {
   const s=snapshot!;const r=running?s.runningRecords.find(r=>r.id===id):s.records.find(r=>r.id===id);if(!r)return;
   const dialog=element('dialog','','experience');const current=session;
-  dialog.append(element('span',running?'进行中（截至备份）':(r as Experience).reviewState==='CONFIRMED'?'已确认':'待整理','eyebrow'),
+  const unfinished = !running && (r as Experience).isUnfinishedFocus;
+  dialog.append(element('span',running?'进行中（截至备份）':unfinished?'未完成专注（不计入正式总时长）':'已记录','eyebrow'),
     element('h2',r.summary||s.recordTypes.find(t=>t.id===(running?r.id:(r as Experience).typeId))?.name||'未分类'),
     element('p',`${DateTime.fromMillis(r.timeStarted,{zone}).toFormat('MM-dd HH:mm:ss')} → ${DateTime.fromMillis(running?s.createdAt:(r as Experience).timeEnded,{zone}).toFormat('MM-dd HH:mm:ss')} · ${duration((running?s.createdAt:(r as Experience).timeEnded)-r.timeStarted)}`),
-    element('p',running?'运行中的评分不参与已确认分布':scores(r as Experience)),element('p',r.comment||'没有备注'),element('p',`记录原时区：${r.zoneId??'未知'}`));
+    element('p',running?'运行中的评分不参与已结束经历分布':scores(r as Experience)),element('p',r.comment||'没有备注'),element('p',`记录原时区：${r.zoneId??'未知'}`));
+  if (unfinished) dialog.append(element('p', `未完成原因：${(r as Experience).unfinishedReason || '未填写'}`));
   for(const purpose of ['PERSON','ENVIRONMENT','GENERAL'] as const){const tags=r.tags.map(t=>s.tags.find(v=>v.id===t.tagId&&v.purpose===purpose&&!Object.values(s.ratingTagIds).includes(v.id))).filter(Boolean);dialog.append(element('p',`${purpose==='PERSON'?'人物':purpose==='ENVIRONMENT'?'环境':'附加标签'}：${tags.map(t=>t!.name).join('、')||'未填写'}`));}
   const gallery=element('div','','gallery');const photos=s.photos.filter(p=>running?p.runningRecordId===id:p.recordId===id);if(!photos.length)gallery.append(element('p','没有照片','muted'));
   for(const photo of photos){const holder=element('figure');holder.append(element('span','正在读取照片…'));gallery.append(holder);void api(`${s.snapshotId}/photos/${photo.sha256}`).then(r=>r.blob()).then(blob=>{

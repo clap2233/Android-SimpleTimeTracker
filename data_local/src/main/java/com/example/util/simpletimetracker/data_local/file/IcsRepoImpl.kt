@@ -81,6 +81,7 @@ class IcsRepoImpl @Inject constructor(
                 recordRepo.getAll()
             }
             records
+                .filterNot { it.isUnfinishedFocus }
                 .sortedBy { it.timeStarted }
                 .forEach { record ->
                     val tagIds = record.tags.map(RecordBase.Tag::tagId)

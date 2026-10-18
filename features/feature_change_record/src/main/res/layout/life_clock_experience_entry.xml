@@ -10,6 +10,11 @@
     <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
         android:text="留下一点感受，也可以留白" android:textSize="13sp"
         android:textColor="?appTextHintColor" android:paddingTop="4dp" android:paddingBottom="12dp" />
+    <TextView android:id="@+id/lifeClockUnfinishedStatus"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="未完成专注 · 不计入正式总时长；编辑详情会保留此状态。"
+        android:textSize="14sp" android:textColor="?appTextPrimaryColor"
+        android:paddingBottom="12dp" android:visibility="gone" />
     <com.google.android.material.textfield.TextInputLayout
         style="@style/LifeClockUi2Input" android:layout_width="match_parent"
         android:layout_height="wrap_content" android:hint="一句话记下这段经历">
