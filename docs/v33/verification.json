@@ -1,0 +1,92 @@
+{
+  "version": "1.59-life-clock-v3.3",
+  "versionCode": 166,
+  "databaseVersion": 40,
+  "snapshotSchemaVersion": 4,
+  "domainTests": 182,
+  "dataTests": 41,
+  "cloudTests": 28,
+  "android": {
+    "emulator-5560": {
+      "tests": [
+        {
+          "class": "LifeClockFullBackupTest",
+          "total": 11,
+          "skipped": 2,
+          "passed": 9
+        },
+        {
+          "class": "LifeClockRecordMutationTest",
+          "total": 13,
+          "skipped": 0,
+          "passed": 13
+        },
+        {
+          "class": "LifeClockUnfinishedFocusTest",
+          "total": 8,
+          "skipped": 0,
+          "passed": 8
+        },
+        {
+          "class": "LifeClockV32NowUiTest#defaultEnglishStartsFocusAndCanEndWithoutConfirmationState",
+          "total": 1,
+          "skipped": 0,
+          "passed": 1
+        },
+        {
+          "class": "MigrationTest",
+          "total": 5,
+          "skipped": 0,
+          "passed": 5
+        },
+        {
+          "class": "UnfinishedFocusUiTest",
+          "total": 3,
+          "skipped": 0,
+          "passed": 3
+        }
+      ],
+      "passed": 39,
+      "skipped": 2
+    },
+    "emulator-5558": {
+      "tests": [
+        {
+          "class": "LifeClockFullBackupTest",
+          "total": 11,
+          "skipped": 2,
+          "passed": 9
+        },
+        {
+          "class": "LifeClockUnfinishedFocusTest",
+          "total": 8,
+          "skipped": 0,
+          "passed": 8
+        },
+        {
+          "class": "MigrationTest",
+          "total": 5,
+          "skipped": 0,
+          "passed": 5
+        },
+        {
+          "class": "UnfinishedFocusUiTest",
+          "total": 3,
+          "skipped": 0,
+          "passed": 3
+        }
+      ],
+      "passed": 25,
+      "skipped": 2
+    }
+  },
+  "nativeContract": "native-contract-verification.json",
+  "formalUpgrade": "API21 and API35 install -r and visual launch verified; full before/after data export comparison not repeated",
+  "pending": [
+    "Real phone background and notification restrictions",
+    "Full small-screen, large-font and dark-theme matrix",
+    "Browser visual and real-phone production backup end-to-end"
+  ],
+  "releaseApkSha256": "301c69e472d599f6d8ef3831c1a3f01a2a3f54c04090268bc7081d49fa20e0d1",
+  "releaseApkBytes": 24016688
+}

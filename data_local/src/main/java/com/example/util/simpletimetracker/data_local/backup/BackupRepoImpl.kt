@@ -127,13 +127,15 @@ class BackupRepoImpl @Inject constructor(
                 is BackupOptionsData.Save.Standard -> true
                 is BackupOptionsData.Save.SaveWithoutRecords -> false
             }
+            val exportedRecords = if (saveRecords) recordRepo.getAll().filterNot { it.isUnfinishedFocus } else emptyList()
+            val exportedRecordIds = exportedRecords.map { it.id }.toSet()
 
             // Write data
             recordTypeRepo.getAll().forEach {
                 fileOutputStream?.write(it.let(::toBackupString).toByteArray())
             }
             if (saveRecords) {
-                recordRepo.getAll().forEach {
+                exportedRecords.forEach {
                     fileOutputStream?.write(it.let(::toBackupString).toByteArray())
                 }
             }
@@ -150,7 +152,7 @@ class BackupRepoImpl @Inject constructor(
                 fileOutputStream?.write(it.let(::toBackupString).toByteArray())
             }
             if (saveRecords) {
-                recordToRecordTagRepo.getAll().forEach {
+                recordToRecordTagRepo.getAll().filter { it.recordId in exportedRecordIds }.forEach {
                     fileOutputStream?.write(it.let(::toBackupString).toByteArray())
                 }
             }

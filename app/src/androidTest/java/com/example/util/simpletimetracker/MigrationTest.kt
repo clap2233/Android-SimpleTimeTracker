@@ -10,12 +10,34 @@ import com.example.util.simpletimetracker.data_local.database.AppDatabaseMigrati
 import java.io.IOException
 import org.junit.Rule
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class MigrationTest {
     private val testDatabaseName = "migration-test"
+
+    @Test fun migrateUnfinishedFocusKeepsOldShortRecordsAndPhotos() {
+        helper.createDatabase(testDatabaseName, 39).use { database ->
+            database.execSQL("INSERT INTO records (id, type_id, time_started, time_ended, comment, tag_id) VALUES (1, 0, 1000, 481000, 'old short', 0)")
+            database.execSQL("INSERT INTO recordPhotos (record_id, relative_path, sha256, position) VALUES (1, 'photos/old.jpg', '${"a".repeat(64)}', 0)")
+        }
+        helper.runMigrationsAndValidate(testDatabaseName, 40, true, *AppDatabaseMigrations.migrations.toTypedArray()).use { database ->
+            database.query("SELECT time_started, time_ended, comment, is_unfinished_focus, unfinished_reason FROM records").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(1000L, cursor.getLong(0))
+                assertEquals(481000L, cursor.getLong(1))
+                assertEquals("old short", cursor.getString(2))
+                assertEquals(0, cursor.getInt(3))
+                assertTrue(cursor.isNull(4))
+            }
+            database.query("SELECT record_id FROM recordPhotos").use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(1L, cursor.getLong(0))
+            }
+        }
+    }
 
     @get:Rule
     val helper: MigrationTestHelper = MigrationTestHelper(

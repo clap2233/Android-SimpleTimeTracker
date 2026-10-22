@@ -162,6 +162,7 @@ export function validateSnapshot(input: unknown): Snapshot {
 }
 
 function validateNative(s: Snapshot) {
+  if (s.upstreamData!.databaseVersion < 40) check(s.records.every(r => !r.isUnfinishedFocus && r.unfinishedReason === null), 'Unfinished focus requires native database 40');
   const tables = s.upstreamData!.tables;
   for (const [name, rows] of Object.entries(tables)) {
     check(Object.hasOwn(nativeSchema, name), 'Unknown native table');

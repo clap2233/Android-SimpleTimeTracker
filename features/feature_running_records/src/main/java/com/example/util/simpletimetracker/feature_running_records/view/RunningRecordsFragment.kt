@@ -34,6 +34,7 @@ import com.example.util.simpletimetracker.feature_base_adapter.recordTypeSuggest
 import com.example.util.simpletimetracker.feature_base_adapter.recordWithHint.createRecordWithHintAdapterDelegate
 import com.example.util.simpletimetracker.feature_base_adapter.runningRecord.createRunningRecordAdapterDelegate
 import com.example.util.simpletimetracker.feature_base_adapter.runningRecord.RunningRecordViewData
+import com.example.util.simpletimetracker.feature_running_records.R
 import com.example.util.simpletimetracker.feature_running_records.viewModel.RunningRecordsViewModel
 import com.example.util.simpletimetracker.feature_views.TransitionNames
 import com.example.util.simpletimetracker.feature_views.extension.addOnScrollListenerAdapter
@@ -218,7 +219,7 @@ class RunningRecordsFragment :
                 .map { it.id to it.timeStartedTimestamp }
             runningRecordsAdapter.submitList(items) {
                 if (current.isNotEmpty() && current != previous) {
-                    binding.rvRunningRecordsList.scrollToPosition(0)
+                    view?.findViewById<RecyclerView>(R.id.rvRunningRecordsList)?.scrollToPosition(0)
                 }
             }
         } else {

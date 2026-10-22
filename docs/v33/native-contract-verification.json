@@ -1,0 +1,66 @@
+{
+  "verifiedAt": "2026-10-18T03:48:42.321Z",
+  "scope": "Local validation of the Android API 35 production FullBackupRepo ZIP; no network upload",
+  "archive": {
+    "name": "v33-native-fixture.zip",
+    "bytes": 4259,
+    "sha256": "9966539c55e9d735948609154e5e5a6e701c180c8009299d7d71fdf57417e760",
+    "entries": [
+      {
+        "name": "snapshot.json",
+        "sizeBytes": 20895
+      },
+      {
+        "name": "photos/8de6af713503e6363961f21e761e7d22144c2918f9f539f430202a5b9a3d438a.png",
+        "sizeBytes": 97
+      }
+    ]
+  },
+  "schemaVersion": 4,
+  "nativeDatabaseVersion": 40,
+  "compiledCloudValidatorAccepted": true,
+  "photoHashesAndSizesMatched": [
+    {
+      "matched": true,
+      "sizeBytes": 97,
+      "id": "13",
+      "sha256": "8de6af713503e6363961f21e761e7d22144c2918f9f539f430202a5b9a3d438a"
+    }
+  ],
+  "week": {
+    "date": "2023-11-13",
+    "zone": "Asia/Shanghai",
+    "formalRecordCount": 0,
+    "formalMillis": 0,
+    "unfinishedCount": 1,
+    "unfinishedMillis": 760000,
+    "happinessRatedCount": 0,
+    "meaningRatedCount": 0
+  },
+  "range": {
+    "from": 1700000000123,
+    "until": 1700000760123,
+    "formalRecordCount": 0,
+    "formalMillis": 0,
+    "unfinished": {
+      "count": 1,
+      "actualMillis": 760000
+    },
+    "formalRecovery": {
+      "MORE_ENERGY": 0,
+      "UNCHANGED": 0,
+      "MORE_TIRED": 0,
+      "unrated": 0
+    }
+  },
+  "retainedAttempt": {
+    "recordId": "10",
+    "reasonMatchedExpectedText": true,
+    "happiness": -4,
+    "meaning": -3,
+    "combined": -7,
+    "planLinkCount": 1,
+    "photoCount": 1
+  },
+  "passed": true
+}
